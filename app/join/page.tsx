@@ -33,6 +33,8 @@ export default function JoinPage() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [website, setWebsite] = useState('')
+  const [photoUrl, setPhotoUrl] = useState('')
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
   const [selectedCats, setSelectedCats] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -65,6 +67,52 @@ export default function JoinPage() {
 
   function toggle(value: string, list: string[], setter: (v: string[]) => void) {
     setter(list.includes(value) ? list.filter((x) => x !== value) : [...list, value])
+  }
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Basic validation
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMsg('Photo must be under 5MB.')
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      setErrorMsg('Please upload an image file.')
+      return
+    }
+
+    setUploadingPhoto(true)
+    setErrorMsg('')
+    const supabase = createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setErrorMsg('Please sign in first to upload a photo.')
+      setUploadingPhoto(false)
+      return
+    }
+
+    const ext = file.name.split('.').pop()
+    const fileName = `${user.id}-${Date.now()}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('provider-photos')
+      .upload(fileName, file, { upsert: true })
+
+    if (uploadError) {
+      setErrorMsg('Photo upload failed: ' + uploadError.message)
+      setUploadingPhoto(false)
+      return
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('provider-photos')
+      .getPublicUrl(fileName)
+
+    setPhotoUrl(urlData.publicUrl)
+    setUploadingPhoto(false)
   }
 
   async function handleSubmit() {
@@ -110,6 +158,7 @@ export default function JoinPage() {
         email,
         phone: phone || null,
         website: website || null,
+        photo_url: photoUrl || null,
         vetting_status: 'pending',
         is_active: true,
         is_org: isOrgMode,
@@ -335,8 +384,30 @@ export default function JoinPage() {
           </Card>
         )}
 
-        {step === 5 && (
+            {step === 5 && (
           <Card>
+            <Field label={isOrgMode ? 'Organization logo or photo (optional)' : 'Profile photo or logo (optional)'}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: mint, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #d4d2ca' }}>
+                  {photoUrl ? (
+                    <img src={photoUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ fontSize: 24, color: teal }}>{(fullName || '?').charAt(0).toUpperCase()}</span>
+                  )}
+                </div>
+                <div>
+                  <label style={{ display: 'inline-block', fontSize: 13, fontWeight: 500, padding: '8px 16px', borderRadius: 8, border: '1px solid ' + teal, background: 'white', color: teal, cursor: uploadingPhoto ? 'default' : 'pointer' }}>
+                    {uploadingPhoto ? 'Uploading…' : photoUrl ? 'Change photo' : 'Upload photo'}
+                    <input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploadingPhoto} style={{ display: 'none' }} />
+                  </label>
+                  <p style={{ fontSize: 11, color: '#888', marginTop: 6, lineHeight: 1.5, maxWidth: 300 }}>
+                    Square images work best (at least 400×400px). Shown as a circle on your directory card. Max 5MB.
+                  </p>
+                </div>
+              </div>
+            </Field>
+
+
             {!isOrgMode && (
               <Field label="Professional bio (shown on your profile)">
                 <textarea style={{ ...inp, minHeight: 90, resize: 'vertical' }} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Describe your approach and what clients can expect. Write in first person." />
