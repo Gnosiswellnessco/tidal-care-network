@@ -45,13 +45,13 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={handleLogin}>
             <label style={{ display: 'block', fontSize: 13, color: '#444', marginBottom: 6 }}>Email address</label>
-            <input
+           <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              style={{ width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, marginBottom: 16 }}
+              style={{ width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, marginBottom: 16, color: '#1a1a1a', background: 'white' }}
             />
             {error && <p style={{ fontSize: 13, color: '#b91c1c', marginBottom: 12 }}>{error}</p>}
             <button
