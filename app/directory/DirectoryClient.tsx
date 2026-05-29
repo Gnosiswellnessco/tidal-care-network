@@ -2,42 +2,21 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES, TAGS } from '@/lib/taxonomy'
 
 const teal = '#3e6a70'
 const dark = '#2c4d52'
 const mint = '#e8eff0'
-const selectStyle: React.CSSProperties = {
-  padding: '10px 36px 10px 12px',
-  fontSize: 14,
-  border: '1px solid #d4d2ca',
-  borderRadius: 8,
-  color: '#1a1a1a',
-  background: 'white',
-  appearance: 'none',
-  WebkitAppearance: 'none',
-  MozAppearance: 'none',
-  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233e6a70' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-  backgroundRepeat: 'no-repeat',
-  backgroundPosition: 'right 12px center',
-  cursor: 'pointer',
-}
 
 function categoryLabel(key: string) {
   return CATEGORIES.find((c) => c.key === key)?.label || key
 }
 
 type Provider = {
-  id: string
-  full_name: string
-  credentials: string | null
-  practice_name: string | null
-  primary_area: string | null
-  bio: string | null
-  photo_url: string | null
-  is_org: boolean
-  offers_telehealth: boolean
-  availability_status: string
+  id: string; full_name: string; credentials: string | null; practice_name: string | null
+  primary_area: string | null; bio: string | null; photo_url: string | null; is_org: boolean
+  offers_telehealth: boolean; availability_status: string
   provider_categories: { category: string; is_primary: boolean }[]
   provider_tags: { tag_type: string; tag_value: string }[]
 }
@@ -49,19 +28,29 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   const [teleOnly, setTeleOnly] = useState(false)
   const [acceptingOnly, setAcceptingOnly] = useState(false)
 
-  // Sub-specialty options depend on the chosen category
+  const [selected, setSelected] = useState<Provider[]>([])
+  const [trayOpen, setTrayOpen] = useState(false)
+  const [step, setStep] = useState<'list' | 'done'>('list')
+
+  const [type, setType] = useState<'client' | 'provider'>('client')
+  const [clientName, setClientName] = useState('')
+  const [clientEmail, setClientEmail] = useState('')
+  const [note, setNote] = useState('')
+  const [roi, setRoi] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
+  const [shareUrl, setShareUrl] = useState('')
+
   const specialtyOptions = useMemo(() => {
     if (!category) return []
-    const sections = TAGS[category] || []
-    return sections.flatMap((s) => s.options)
+    return (TAGS[category] || []).flatMap((s) => s.options)
   }, [category])
 
   const filtered = useMemo(() => {
     return providers.filter((p) => {
       if (search.trim()) {
         const q = search.toLowerCase()
-        const hay = `${p.full_name} ${p.practice_name || ''} ${p.bio || ''}`.toLowerCase()
-        if (!hay.includes(q)) return false
+        if (!`${p.full_name} ${p.practice_name || ''} ${p.bio || ''}`.toLowerCase().includes(q)) return false
       }
       if (category && !p.provider_categories.some((c) => c.category === category)) return false
       if (specialty && !p.provider_tags.some((t) => t.tag_value === specialty)) return false
@@ -71,11 +60,54 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
     })
   }, [providers, search, category, specialty, teleOnly, acceptingOnly])
 
-  function resetFilters() {
-    setSearch(''); setCategory(''); setSpecialty(''); setTeleOnly(false); setAcceptingOnly(false)
+  function toggleSelect(p: Provider) {
+    setSelected((cur) => cur.some((s) => s.id === p.id) ? cur.filter((s) => s.id !== p.id) : [...cur, p])
+    setTrayOpen(true)
+  }
+  const isSelected = (id: string) => selected.some((s) => s.id === id)
+
+  async function handleSend() {
+    setError('')
+    if (selected.length === 0) { setError('Select at least one provider.'); return }
+    if (type === 'client' && !clientName.trim()) { setError('Enter a client name or label.'); return }
+    setSending(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    let fromId: string | null = null
+    if (user) {
+      const { data: me } = await supabase.from('providers').select('id').eq('user_id', user.id).maybeSingle()
+      fromId = me?.id || null
+    }
+    if (type === 'provider' && !fromId) { setError('You must be logged in as a provider for a warm handoff.'); setSending(false); return }
+
+    const token = type === 'client' ? crypto.randomUUID().replace(/-/g, '') : null
+
+    const { data: referral, error: refErr } = await supabase
+      .from('referrals')
+      .insert({
+        from_provider_id: fromId,
+        to_provider_id: type === 'provider' ? selected[0].id : null,
+        referral_type: type,
+        roi_requested: roi,
+        note: note || null,
+        client_name: type === 'client' ? clientName : null,
+        client_email: type === 'client' ? (clientEmail || null) : null,
+        share_token: token,
+        status: 'sent',
+      }).select().single()
+
+    if (refErr || !referral) { setError('Could not create referral: ' + (refErr?.message || 'unknown')); setSending(false); return }
+
+    await supabase.from('referral_providers').insert(selected.map((p) => ({ referral_id: referral.id, provider_id: p.id })))
+    setSending(false)
+    if (token) setShareUrl(`${window.location.origin}/r/${token}`)
+    setStep('done')
   }
 
-  const hasFilters = search || category || specialty || teleOnly || acceptingOnly
+  function resetAll() {
+    setSelected([]); setStep('list'); setType('client'); setClientName(''); setClientEmail(''); setNote(''); setRoi(false); setShareUrl(''); setError(''); setTrayOpen(false)
+  }
 
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
@@ -90,94 +122,149 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
 
       <section style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 40px 8px' }}>
         <h1 style={{ fontSize: 30, fontWeight: 700, color: dark, marginBottom: 8 }}>Provider directory</h1>
-        <p style={{ fontSize: 16, color: '#666' }}>{filtered.length} of {providers.length} provider{providers.length === 1 ? '' : 's'}</p>
+        <p style={{ fontSize: 16, color: '#666' }}>{filtered.length} of {providers.length} provider{providers.length === 1 ? '' : 's'} · check providers to build a referral</p>
       </section>
 
       <section style={{ maxWidth: 1000, margin: '0 auto', padding: '8px 40px 16px' }}>
         <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 16 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, practice, or keyword…"
-              style={{ flex: '1 1 220px', padding: '10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: 'white' }}
-            />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, practice, or keyword…" style={{ flex: '1 1 220px', padding: '10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: 'white' }} />
             <select value={category} onChange={(e) => { setCategory(e.target.value); setSpecialty('') }} style={selectStyle}>
               <option value="">All categories</option>
               {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
             </select>
-            <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} disabled={!category}
-              style={{ ...selectStyle, color: category ? '#1a1a1a' : '#aaa', opacity: category ? 1 : 0.6 }}>
+            <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} disabled={!category} style={{ ...selectStyle, color: category ? '#1a1a1a' : '#aaa', opacity: category ? 1 : 0.6 }}>
               <option value="">{category ? 'All specialties' : 'Pick a category first'}</option>
               {specialtyOptions.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
-
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 14, paddingTop: 14, borderTop: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: dark, cursor: 'pointer' }}>
-              <input type="checkbox" checked={teleOnly} onChange={(e) => setTeleOnly(e.target.checked)} /> Telehealth available
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: dark, cursor: 'pointer' }}>
-              <input type="checkbox" checked={acceptingOnly} onChange={(e) => setAcceptingOnly(e.target.checked)} /> Accepting new clients
-            </label>
-            {hasFilters && (
-              <button onClick={resetFilters} style={{ fontSize: 13, color: teal, background: 'none', border: 'none', cursor: 'pointer', marginLeft: 'auto' }}>Clear filters</button>
-            )}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: dark, cursor: 'pointer' }}><input type="checkbox" checked={teleOnly} onChange={(e) => setTeleOnly(e.target.checked)} /> Telehealth available</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: dark, cursor: 'pointer' }}><input type="checkbox" checked={acceptingOnly} onChange={(e) => setAcceptingOnly(e.target.checked)} /> Accepting new clients</label>
           </div>
         </div>
       </section>
 
-      <section style={{ maxWidth: 1000, margin: '0 auto', padding: '8px 40px 64px' }}>
+      <section style={{ maxWidth: 1000, margin: '0 auto', padding: '8px 40px 100px' }}>
         {filtered.length === 0 ? (
-          <p style={{ fontSize: 15, color: '#888', padding: '32px 0', textAlign: 'center' }}>No providers match your filters. Try broadening your search.</p>
+          <p style={{ fontSize: 15, color: '#888', padding: '32px 0', textAlign: 'center' }}>No providers match your filters.</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
             {filtered.map((p) => (
-              <Link key={p.id} href={`/provider/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 24, cursor: 'pointer', height: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div key={p.id} style={{ background: 'white', borderRadius: 12, border: isSelected(p.id) ? `2px solid ${teal}` : '1px solid #e5e3dc', padding: 24, position: 'relative' }}>
+                <label style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: teal, cursor: 'pointer', fontWeight: 500 }}>
+                  <input type="checkbox" checked={isSelected(p.id)} onChange={() => toggleSelect(p)} /> Refer
+                </label>
+                <Link href={`/provider/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, paddingRight: 60 }}>
                     <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: mint, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e5e3dc' }}>
-                      {p.photo_url ? (
-                        <img src={p.photo_url} alt={p.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        <span style={{ fontSize: 20, fontWeight: 600, color: teal }}>{(p.full_name || '?').charAt(0).toUpperCase()}</span>
-                      )}
+                      {p.photo_url ? <img src={p.photo_url} alt={p.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 20, fontWeight: 600, color: teal }}>{(p.full_name || '?').charAt(0).toUpperCase()}</span>}
                     </div>
                     <div>
-                      <div style={{ fontSize: 17, fontWeight: 600, color: dark, marginBottom: 2 }}>
-                        {p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}
-                      </div>
-                      {p.is_org ? (
-                        <div style={{ fontSize: 13, color: '#888' }}>
-                          {p.full_name ? `Contact: ${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}` : 'Organization'}{p.primary_area ? ` · ${p.primary_area}` : ''}{p.offers_telehealth ? ' · Telehealth' : ''}
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: 13, color: '#888' }}>
-                          {p.practice_name ? `${p.practice_name} · ` : ''}{p.primary_area}{p.offers_telehealth ? ' · Telehealth available' : ''}
-                        </div>
-                      )}
+                      <div style={{ fontSize: 17, fontWeight: 600, color: dark, marginBottom: 2 }}>{p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}</div>
+                      <div style={{ fontSize: 13, color: '#888' }}>{p.practice_name && !p.is_org ? `${p.practice_name} · ` : ''}{p.primary_area}{p.offers_telehealth ? ' · Telehealth' : ''}</div>
                     </div>
                   </div>
                   {p.bio && <p style={{ fontSize: 14, lineHeight: 1.6, color: '#555', marginBottom: 12 }}>{p.bio}</p>}
                   {p.provider_categories.length > 0 && (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                      {p.provider_categories.map((pc) => (
-                        <span key={pc.category} style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: mint, color: dark }}>{categoryLabel(pc.category)}</span>
-                      ))}
+                      {p.provider_categories.map((pc) => <span key={pc.category} style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: mint, color: dark }}>{categoryLabel(pc.category)}</span>)}
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 6, background: mint, color: dark }}>✓ Vetted</span>
-                    {p.availability_status === 'accepting' && (
-                      <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 6, background: '#eaf3de', color: '#27500a' }}>Accepting clients</span>
-                    )}
+                    {p.availability_status === 'accepting' && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 6, background: '#eaf3de', color: '#27500a' }}>Accepting clients</span>}
                   </div>
-                </div>
-              </Link>
+                </Link>
+              </div>
             ))}
           </div>
         )}
       </section>
+
+      {selected.length > 0 && (
+        <>
+          {!trayOpen && (
+            <button onClick={() => setTrayOpen(true)} aria-label="Open referral tray"
+              style={{ position: 'fixed', top: '50%', right: 0, transform: 'translateY(-50%)', zIndex: 49, background: teal, color: 'white', border: 'none', borderRadius: '10px 0 0 10px', padding: '16px 10px', cursor: 'pointer', writingMode: 'vertical-rl', fontSize: 13, fontWeight: 600, boxShadow: '-2px 2px 12px rgba(0,0,0,0.15)' }}>
+              Referral ({selected.length})
+            </button>
+          )}
+
+          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(420px, 100vw)', background: '#f7f6f2', zIndex: 50, boxShadow: '-4px 0 24px rgba(0,0,0,0.15)', overflowY: 'auto', padding: 24, transform: trayOpen ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.28s ease' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: dark }}>Your referral</h2>
+              <button onClick={() => setTrayOpen(false)} aria-label="Hide tray" style={{ fontSize: 13, fontWeight: 500, color: teal, background: 'none', border: 'none', cursor: 'pointer' }}>Hide →</button>
+            </div>
+
+            {step !== 'done' && (
+              <p style={{ fontSize: 12, color: '#888', marginBottom: 16, lineHeight: 1.5, background: mint, padding: '8px 12px', borderRadius: 8 }}>
+                Keep browsing and checking "Refer" on any provider to add them here. Tap "Hide" to slide this panel away while you browse.
+              </p>
+            )}
+
+            {step === 'done' ? (
+              <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 24, textAlign: 'center' }}>
+                <div style={{ fontSize: 36, marginBottom: 8 }}>✓</div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: dark, marginBottom: 8 }}>Referral created</h3>
+                {shareUrl ? (
+                  <>
+                    <p style={{ fontSize: 14, color: '#555', marginBottom: 16, lineHeight: 1.6 }}>Share this link with {clientName}:</p>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                      <input readOnly value={shareUrl} style={{ flex: 1, padding: '9px 10px', fontSize: 12, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: '#faf9f5' }} />
+                      <button onClick={() => navigator.clipboard.writeText(shareUrl)} style={{ fontSize: 13, fontWeight: 500, padding: '9px 14px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: 'pointer' }}>Copy</button>
+                    </div>
+                  </>
+                ) : (
+                  <p style={{ fontSize: 14, color: '#555', marginBottom: 16, lineHeight: 1.6 }}>Your warm handoff to {selected[0].full_name} has been recorded.</p>
+                )}
+                <button onClick={resetAll} style={{ fontSize: 14, fontWeight: 500, padding: '10px 20px', borderRadius: 8, border: '1px solid #d4d2ca', background: 'white', color: dark, cursor: 'pointer' }}>Done</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                  {selected.map((p) => (
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'white', borderRadius: 8, border: '1px solid #e5e3dc' }}>
+                      <span style={{ fontSize: 13, color: dark, fontWeight: 500 }}>{p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}</span>
+                      <button onClick={() => toggleSelect(p)} style={{ fontSize: 12, color: '#991b1b', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 20 }}>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                    <button onClick={() => setType('client')} style={{ flex: 1, fontSize: 13, fontWeight: 500, padding: '8px', borderRadius: 8, cursor: 'pointer', border: type === 'client' ? `2px solid ${teal}` : '1px solid #d4d2ca', background: type === 'client' ? mint : 'white', color: dark }}>Send to client</button>
+                    <button onClick={() => { if (selected.length > 1) { setError('Warm handoff is to one provider. Remove extras or use Send to client.'); return } setType('provider'); setError('') }} style={{ flex: 1, fontSize: 13, fontWeight: 500, padding: '8px', borderRadius: 8, cursor: 'pointer', border: type === 'provider' ? `2px solid ${teal}` : '1px solid #d4d2ca', background: type === 'provider' ? mint : 'white', color: dark }}>Warm handoff</button>
+                  </div>
+
+                  {type === 'client' && (
+                    <>
+                      <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client name or label" style={trayInp} />
+                      <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} type="email" placeholder="Client email (optional)" style={trayInp} />
+                    </>
+                  )}
+                  <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional). No detailed health info." style={{ ...trayInp, minHeight: 60, resize: 'vertical' }} />
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: dark, cursor: 'pointer', marginBottom: 16, lineHeight: 1.4 }}>
+                    <input type="checkbox" checked={roi} onChange={(e) => setRoi(e.target.checked)} style={{ marginTop: 2 }} /> Request a Release of Information (ROI) for providers to communicate
+                  </label>
+                  {error && <p style={{ fontSize: 13, color: '#b91c1c', marginBottom: 12 }}>{error}</p>}
+                  <button onClick={handleSend} disabled={sending} style={{ width: '100%', fontSize: 14, fontWeight: 500, padding: '11px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: sending ? 'default' : 'pointer', opacity: sending ? 0.6 : 1 }}>
+                    {sending ? 'Creating…' : type === 'client' ? 'Create referral & get link' : 'Send warm handoff'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
     </main>
   )
 }
+
+const selectStyle: React.CSSProperties = {
+  padding: '10px 36px 10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: 'white',
+  appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233e6a70' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+  backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', cursor: 'pointer',
+}
+const trayInp: React.CSSProperties = { width: '100%', padding: '9px 11px', fontSize: 13, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: 'white', marginBottom: 12 }

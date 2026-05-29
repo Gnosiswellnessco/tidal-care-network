@@ -34,9 +34,16 @@ export default async function DashboardPage() {
             <p style={{ fontSize: 16, color: '#333', marginBottom: 8 }}>
               Welcome back, <strong>{provider.full_name}</strong>.
             </p>
-            <p style={{ fontSize: 14, color: '#666' }}>
-              Your application status: <strong style={{ color: '#3e6a70' }}>{provider.vetting_status}</strong>
-            </p>
+            {provider.vetting_status === 'approved' && (
+              <Link href="/refer" style={{ display: 'inline-block', marginTop: 16, fontSize: 14, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
+                Create a referral →
+              </Link>
+            )}
+            {provider.vetting_status === 'approved' && (
+              <Link href="/refer" style={{ display: 'inline-block', marginTop: 16, fontSize: 14, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
+                Create a referral →
+              </Link>
+            )}
           </div>
         ) : (
           <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 28 }}>
