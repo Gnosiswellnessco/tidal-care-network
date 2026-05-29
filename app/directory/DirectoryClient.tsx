@@ -23,6 +23,7 @@ type Provider = {
 
 export default function DirectoryClient({ providers }: { providers: Provider[] }) {
   const [search, setSearch] = useState('')
+  const [agreed, setAgreed] = useState(true)
   const [category, setCategory] = useState('')
   const [specialty, setSpecialty] = useState('')
   const [teleOnly, setTeleOnly] = useState(false)
@@ -43,6 +44,19 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   const [error, setError] = useState('')
   const [shareUrl, setShareUrl] = useState('')
   const [emailNote, setEmailNote] = useState('')
+
+  // Show terms gate if not previously acknowledged
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      const ok = window.localStorage.getItem('tcn_terms_agreed')
+      if (!ok) setAgreed(false)
+    }
+  })
+
+  function acceptTerms() {
+    window.localStorage.setItem('tcn_terms_agreed', 'yes')
+    setAgreed(true)
+  }
 
   const specialtyOptions = useMemo(() => {
     if (!category) return []
@@ -143,6 +157,28 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
 
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
+      {!agreed && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(20,30,32,0.6)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ background: 'white', borderRadius: 16, maxWidth: 480, padding: 32, textAlign: 'center' }}>
+            <img src="/logo.svg" alt="Tidal Care Network" style={{ height: 48, width: 'auto', marginBottom: 16 }} />
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: dark, marginBottom: 12 }}>Before you browse</h2>
+            <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, marginBottom: 16, textAlign: 'left' }}>
+              Tidal Care Network is a directory only. The providers listed are independent professionals — we are not responsible for the care they provide, and a listing is not an endorsement or guarantee. You are responsible for evaluating any provider and verifying their credentials before engaging them.
+            </p>
+            <div style={{ background: '#fbeef0', border: '1px solid #f3c9d0', borderRadius: 8, padding: 12, marginBottom: 16, textAlign: 'left' }}>
+              <p style={{ fontSize: 13, color: '#7a2230', lineHeight: 1.6, margin: 0 }}>
+                <strong>In a crisis, this directory is not the right tool.</strong> If you or someone else is in danger, call <strong>911</strong>. For mental health or suicidal crisis, call or text <strong>988</strong> (Suicide & Crisis Lifeline), available 24/7, or visit your <strong>nearest emergency room</strong>.
+              </p>
+            </div>
+            <p style={{ fontSize: 13, color: '#777', marginBottom: 20, textAlign: 'left' }}>
+              By continuing, you agree to our <Link href="/terms" target="_blank" style={{ color: teal }}>Terms of Use</Link>.
+            </p>
+            <button onClick={acceptTerms} style={{ fontSize: 14, fontWeight: 500, padding: '11px 24px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: 'pointer' }}>
+              I understand and agree
+            </button>
+          </div>
+        </div>
+      )}
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 1100, margin: '0 auto' }}>
         <Link href="/"><img src="/logo.svg" alt="Tidal Care Network" style={{ height: 56, width: 'auto' }} /></Link>
         <nav style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
