@@ -37,9 +37,12 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   const [clientEmail, setClientEmail] = useState('')
   const [note, setNote] = useState('')
   const [roi, setRoi] = useState(false)
+  const [notifyProvider, setNotifyProvider] = useState(true)
+  const [alsoNotifyClient, setAlsoNotifyClient] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [shareUrl, setShareUrl] = useState('')
+  const [emailNote, setEmailNote] = useState('')
 
   const specialtyOptions = useMemo(() => {
     if (!category) return []
@@ -92,7 +95,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
         roi_requested: roi,
         note: note || null,
         client_name: type === 'client' ? clientName : null,
-        client_email: type === 'client' ? (clientEmail || null) : null,
+        client_email: (clientEmail || null),
         share_token: token,
         status: 'sent',
       }).select().single()
@@ -100,13 +103,42 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
     if (refErr || !referral) { setError('Could not create referral: ' + (refErr?.message || 'unknown')); setSending(false); return }
 
     await supabase.from('referral_providers').insert(selected.map((p) => ({ referral_id: referral.id, provider_id: p.id })))
+
+    // Decide who to email
+    let wantClient = false
+    let wantProvider = false
+    if (type === 'client') {
+      wantClient = !!clientEmail
+    } else {
+      wantProvider = notifyProvider
+      wantClient = alsoNotifyClient && !!clientEmail
+    }
+
+    if (wantClient || wantProvider) {
+      try {
+        const res = await fetch('/api/send-referral', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ referralId: referral.id, notifyClient: wantClient, notifyProvider: wantProvider }),
+        })
+        const out = await res.json()
+        if (out.sent && out.sent.length > 0) {
+          setEmailNote(`Email sent to: ${out.sent.join(' and ')}.`)
+        } else if (out.error) {
+          setEmailNote('Referral saved, but email could not be sent.')
+        }
+      } catch {
+        setEmailNote('Referral saved, but email could not be sent.')
+      }
+    }
+
     setSending(false)
     if (token) setShareUrl(`${window.location.origin}/r/${token}`)
     setStep('done')
   }
 
   function resetAll() {
-    setSelected([]); setStep('list'); setType('client'); setClientName(''); setClientEmail(''); setNote(''); setRoi(false); setShareUrl(''); setError(''); setTrayOpen(false)
+    setSelected([]); setStep('list'); setType('client'); setClientName(''); setClientEmail(''); setNote(''); setRoi(false); setNotifyProvider(true); setAlsoNotifyClient(false); setShareUrl(''); setError(''); setEmailNote(''); setTrayOpen(false)
   }
 
   return (
@@ -207,6 +239,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 24, textAlign: 'center' }}>
                 <div style={{ fontSize: 36, marginBottom: 8 }}>✓</div>
                 <h3 style={{ fontSize: 18, fontWeight: 700, color: dark, marginBottom: 8 }}>Referral created</h3>
+                {emailNote && <p style={{ fontSize: 13, color: '#27500a', background: '#eaf3de', padding: '8px 12px', borderRadius: 8, marginBottom: 12 }}>{emailNote}</p>}
                 {shareUrl ? (
                   <>
                     <p style={{ fontSize: 14, color: '#555', marginBottom: 16, lineHeight: 1.6 }}>Share this link with {clientName}:</p>
@@ -240,16 +273,36 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                   {type === 'client' && (
                     <>
                       <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client name or label" style={trayInp} />
-                      <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} type="email" placeholder="Client email (optional)" style={trayInp} />
+                      <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} type="email" placeholder="Client email (to send them the link)" style={trayInp} />
+                      <p style={{ fontSize: 11, color: '#888', marginTop: -6, marginBottom: 12, lineHeight: 1.5 }}>If you enter an email, we'll send the referral link to your client. Otherwise you'll get a link to share yourself.</p>
                     </>
                   )}
+
+                  {type === 'provider' && (
+                    <div style={{ marginBottom: 12, padding: 12, background: '#faf9f5', borderRadius: 8 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: dark, marginBottom: 8 }}>Who should be notified?</div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: dark, cursor: 'pointer', marginBottom: 8 }}>
+                        <input type="checkbox" checked={notifyProvider} onChange={(e) => setNotifyProvider(e.target.checked)} /> Notify the receiving provider (includes your info)
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: dark, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={alsoNotifyClient} onChange={(e) => setAlsoNotifyClient(e.target.checked)} /> Also email the client a copy
+                      </label>
+                      {alsoNotifyClient && (
+                        <>
+                          <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client name" style={{ ...trayInp, marginTop: 10, marginBottom: 8 }} />
+                          <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} type="email" placeholder="Client email" style={trayInp} />
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional). No detailed health info." style={{ ...trayInp, minHeight: 60, resize: 'vertical' }} />
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: dark, cursor: 'pointer', marginBottom: 16, lineHeight: 1.4 }}>
                     <input type="checkbox" checked={roi} onChange={(e) => setRoi(e.target.checked)} style={{ marginTop: 2 }} /> Request a Release of Information (ROI) for providers to communicate
                   </label>
                   {error && <p style={{ fontSize: 13, color: '#b91c1c', marginBottom: 12 }}>{error}</p>}
                   <button onClick={handleSend} disabled={sending} style={{ width: '100%', fontSize: 14, fontWeight: 500, padding: '11px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: sending ? 'default' : 'pointer', opacity: sending ? 0.6 : 1 }}>
-                    {sending ? 'Creating…' : type === 'client' ? 'Create referral & get link' : 'Send warm handoff'}
+                    {sending ? 'Sending…' : type === 'client' ? 'Create & send referral' : 'Send warm handoff'}
                   </button>
                 </div>
               </>
