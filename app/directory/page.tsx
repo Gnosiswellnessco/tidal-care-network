@@ -26,10 +26,17 @@ export default async function DirectoryPage() {
     .select('provider_id, tag_type, tag_value')
     .in('provider_id', safeIds)
 
-  const providers = (rawProviders || []).map((p) => ({
+    const { data: endorsed } = await supabase
+    .from('endorsements')
+    .select('provider_id')
+    .eq('status', 'confirmed')
+    .in('provider_id', safeIds)
+
+const providers = (rawProviders || []).map((p) => ({
     ...p,
     provider_categories: (cats || []).filter((c) => c.provider_id === p.id),
     provider_tags: (tags || []).filter((t) => t.provider_id === p.id),
+    is_endorsed: (endorsed || []).some((e) => e.provider_id === p.id),
   }))
 
   return <DirectoryClient providers={providers} />

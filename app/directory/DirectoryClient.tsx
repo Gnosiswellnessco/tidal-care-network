@@ -19,6 +19,7 @@ type Provider = {
   offers_telehealth: boolean; availability_status: string
   provider_categories: { category: string; is_primary: boolean }[]
   provider_tags: { tag_type: string; tag_value: string }[]
+  is_endorsed?: boolean
 }
 
 export default function DirectoryClient({ providers }: { providers: Provider[] }) {
@@ -222,6 +223,12 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               <div key={p.id} style={{ background: 'white', borderRadius: 12, border: isSelected(p.id) ? `2px solid ${teal}` : '1px solid #e5e3dc', padding: 24, position: 'relative' }}>
                 <label style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: teal, cursor: 'pointer', fontWeight: 500 }}>
                   <input type="checkbox" checked={isSelected(p.id)} onChange={() => toggleSelect(p)} /> Refer
+                {p.is_endorsed && (
+                  <span title="Peer endorsed" style={{ position: 'absolute', top: 44, right: 14, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: '#2c4d52' }}>
+                    <svg width="16" height="18" viewBox="0 0 24 24" fill="#e8eff0" stroke="#2c4d52" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                    Endorsed
+                  </span>
+                )}
                 </label>
                 <Link href={`/provider/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, paddingRight: 60 }}>

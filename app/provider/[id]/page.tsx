@@ -26,7 +26,13 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
   const { data: cats } = await supabase.from('provider_categories').select('category, is_primary').eq('provider_id', id)
   const { data: tags } = await supabase.from('provider_tags').select('tag_type, tag_value').eq('provider_id', id)
   const { data: insurance } = await supabase.from('provider_insurance').select('insurance').eq('provider_id', id)
+  const { data: endorsements } = await supabase
+    .from('endorsements')
+    .select('id')
+    .eq('provider_id', id)
+    .eq('status', 'confirmed')
 
+  const isEndorsed = (endorsements?.length || 0) > 0
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 900, margin: '0 auto' }}>
@@ -56,6 +62,9 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
               </div>
               {p.availability_status === 'accepting' && (
                 <span style={{ display: 'inline-block', marginTop: 8, fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 6, background: '#eaf3de', color: '#27500a' }}>Accepting new clients</span>
+              )}
+              {isEndorsed && (
+                <span style={{ display: 'inline-block', marginTop: 8, marginLeft: 8, fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 6, background: '#e8eff0', color: '#2c4d52' }}>★ Peer endorsed</span>
               )}
             </div>
           </div>

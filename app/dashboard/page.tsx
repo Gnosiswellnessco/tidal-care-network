@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import EndorsementRequest from '@/components/EndorsementRequest'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,9 +16,11 @@ export default async function DashboardPage() {
   // Check if this user already has a provider profile
   const { data: provider } = await supabase
     .from('providers')
-    .select('full_name, vetting_status')
+    .select('id, full_name, vetting_status')
     .eq('user_id', user.id)
     .maybeSingle()
+
+  console.log('DASHBOARD provider object:', JSON.stringify(provider))
 
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#f7f6f2' }}>
@@ -39,11 +42,10 @@ export default async function DashboardPage() {
                 Create a referral →
               </Link>
             )}
-            {provider.vetting_status === 'approved' && (
-              <Link href="/refer" style={{ display: 'inline-block', marginTop: 16, fontSize: 14, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
-                Create a referral →
-              </Link>
-            )}
+            <div>
+              <EndorsementRequest providerId={provider.id} />
+            </div>
+           
           </div>
         ) : (
           <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 28 }}>
