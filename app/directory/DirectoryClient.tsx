@@ -20,6 +20,8 @@ type Provider = {
   provider_categories: { category: string; is_primary: boolean }[]
   provider_tags: { tag_type: string; tag_value: string }[]
   is_endorsed?: boolean
+  rating_avg?: number | null
+  rating_count?: number
 }
 
 export default function DirectoryClient({ providers }: { providers: Provider[] }) {
@@ -223,13 +225,13 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               <div key={p.id} style={{ background: 'white', borderRadius: 12, border: isSelected(p.id) ? `2px solid ${teal}` : '1px solid #e5e3dc', padding: 24, position: 'relative' }}>
                 <label style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: teal, cursor: 'pointer', fontWeight: 500 }}>
                   <input type="checkbox" checked={isSelected(p.id)} onChange={() => toggleSelect(p)} /> Refer
-                {p.is_endorsed && (
-                  <span title="Peer endorsed" style={{ position: 'absolute', top: 44, right: 14, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, color: '#2c4d52' }}>
-                    <svg width="16" height="18" viewBox="0 0 24 24" fill="#e8eff0" stroke="#2c4d52" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
-                    Endorsed
-                  </span>
-                )}
                 </label>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  <img src="/vetted.svg" alt="Vetted" style={{ height: 20, width: 'auto', display: 'block' }} />
+                  {p.is_endorsed && <img src="/endorsed.svg" alt="Peer endorsed" style={{ height: 20, width: 'auto', display: 'block' }} />}
+                </div>
+
                 <Link href={`/provider/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, paddingRight: 60 }}>
                     <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: mint, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e5e3dc' }}>
@@ -246,10 +248,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                       {p.provider_categories.map((pc) => <span key={pc.category} style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: mint, color: dark }}>{categoryLabel(pc.category)}</span>)}
                     </div>
                   )}
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 6, background: mint, color: dark }}>✓ Vetted</span>
-                    {p.availability_status === 'accepting' && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 6, background: '#eaf3de', color: '#27500a' }}>Accepting clients</span>}
-                  </div>
+                  {p.availability_status === 'accepting' && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 6, background: '#eaf3de', color: '#27500a' }}>Accepting clients</span>}
                 </Link>
               </div>
             ))}

@@ -20,7 +20,6 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .maybeSingle()
 
-  console.log('DASHBOARD provider object:', JSON.stringify(provider))
 
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#f7f6f2' }}>
@@ -42,6 +41,11 @@ export default async function DashboardPage() {
                 Create a referral →
               </Link>
             )}
+            <div style={{ marginTop: 20, padding: '14px 16px', background: '#e8eff0', borderRadius: 10 }}>
+              <p style={{ fontSize: 13, color: '#2c4d52', lineHeight: 1.6, margin: 0 }}>
+                <strong>Boost your visibility.</strong> Providers with peer endorsements appear higher in the directory search results. Request an endorsement from a colleague below — it only takes them one click to confirm.
+              </p>
+            </div>
             <div>
               <EndorsementRequest providerId={provider.id} />
             </div>

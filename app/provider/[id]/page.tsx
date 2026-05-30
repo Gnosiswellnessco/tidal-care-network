@@ -42,7 +42,12 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
 
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px 40px 64px' }}>
 
-        <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e5e3dc', padding: 32 }}>
+        <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e5e3dc', padding: 32, position: 'relative' }}>
+
+          <div style={{ position: 'absolute', top: 24, right: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <img src="/vetted.svg" alt="Vetted" style={{ height: 26, width: 'auto', display: 'block' }} />
+            {isEndorsed && <img src="/endorsed.svg" alt="Peer endorsed" style={{ height: 26, width: 'auto', display: 'block' }} />}
+          </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
             <div style={{ width: 88, height: 88, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#e8eff0', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e5e3dc' }}>
@@ -62,9 +67,6 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
               </div>
               {p.availability_status === 'accepting' && (
                 <span style={{ display: 'inline-block', marginTop: 8, fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 6, background: '#eaf3de', color: '#27500a' }}>Accepting new clients</span>
-              )}
-              {isEndorsed && (
-                <span style={{ display: 'inline-block', marginTop: 8, marginLeft: 8, fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 6, background: '#e8eff0', color: '#2c4d52' }}>★ Peer endorsed</span>
               )}
             </div>
           </div>

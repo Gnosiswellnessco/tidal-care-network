@@ -123,7 +123,7 @@ export const TAGS: Record<string, { title: string; options: string[] }[]> = {
   ],
 }
 
-export const INSURANCE_OPTIONS = ['BCBS', 'Aetna', 'Cigna', 'Medicaid (SC)', 'Medicare', 'Tricare', 'United / Optum', 'Humana', 'Self-pay', 'Sliding scale', 'Superbill / out-of-network']
+export const INSURANCE_OPTIONS = ['BCBS', 'Aetna', 'Cigna', 'Medicaid (SC)', 'Medicare', 'Tricare', 'ChampVa', 'United / Optum', 'Humana', 'Self-pay', 'Sliding scale', 'HSA / FSA', 'Superbill / Out-of-network', 'We do not take insurance']
 
 export const AGE_GROUPS = ['Infants / toddlers (0–3)', 'Children (4–12)', 'Adolescents (13–17)', 'Young adults (18–25)', 'Adults (26–64)', 'Older adults (65+)', 'Lifespan / all ages']
 

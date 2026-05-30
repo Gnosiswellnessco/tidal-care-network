@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="16 12 360 94">
+  <path fill-rule="evenodd" fill="#3e6a70" d="
+    M55 16 L90 28 L90 58 C90 80 74 92 55 99 C36 92 20 80 20 58 L20 28 Z
+    M44 40 L44 75 L68 75 L68 68 L52 68 L52 61 L66 61 L66 54 L52 54 L52 47 L68 47 L68 40 Z
+  "/>
+  <text x="108" y="70" font-family="Helvetica, Arial, sans-serif" font-size="42" font-weight="700" fill="#3e6a70" letter-spacing="0.5">ENDORSED</text>
+</svg>

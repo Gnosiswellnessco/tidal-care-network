@@ -37,9 +37,14 @@ export default async function EndorsePage({ params }: { params: Promise<{ token:
         {e.status === 'pending' ? (
           <>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: '#2c4d52', marginBottom: 12 }}>Endorse {provider?.full_name}?</h1>
-            <p style={{ fontSize: 15, color: '#555', lineHeight: 1.6, marginBottom: 24 }}>
-              <strong>{providerName}</strong>{provider?.practice_name ? ` of ${provider.practice_name}` : ''} has asked you to endorse them as a professional colleague on Tidal Care Network. By endorsing, you confirm you know them professionally and can vouch for their standing.
+            <p style={{ fontSize: 15, color: '#555', lineHeight: 1.6, marginBottom: 16 }}>
+              <strong>{providerName}</strong>{provider?.practice_name ? ` of ${provider.practice_name}` : ''} has asked you to endorse them as a professional colleague on Tidal Care Network.
             </p>
+            <div style={{ textAlign: 'left', background: '#e8eff0', borderRadius: 10, padding: 16, marginBottom: 20 }}>
+              <p style={{ fontSize: 14, color: '#2c4d52', lineHeight: 1.6, margin: 0 }}>
+                By endorsing this provider, I affirm that I know them professionally and that, to the best of my knowledge, they abide by the ethical standards of their profession, are competent in their area of practice, and that I know of no reason clients should not be referred to them.
+              </p>
+            </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <form action={confirm}>
                 <input type="hidden" name="token" value={token} />

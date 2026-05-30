@@ -11,7 +11,19 @@ const teal = '#3e6a70'
 const dark = '#2c4d52'
 const mint = '#e8eff0'
 
+const ATTESTATIONS = [
+  'I hold a current, valid license or certification in good standing in my field (where applicable).',
+  'I have no unresolved board complaints, disciplinary actions, or license restrictions.',
+  'I carry professional liability insurance, where applicable to my profession.',
+  'I agree to abide by the ethical standards and scope of practice of my profession.',
+  'I will provide care only within my areas of competence and training.',
+  'The information I have provided in this application is true and accurate.',
+]
+
 type Org = { id: string; full_name: string; practice_name: string | null }
+type Address = { label: string; street: string; city: string; state: string; zip: string }
+
+const emptyAddress = (): Address => ({ label: '', street: '', city: '', state: 'SC', zip: '' })
 
 export default function JoinPage() {
   const router = useRouter()
@@ -42,14 +54,18 @@ export default function JoinPage() {
   const [selectedAges, setSelectedAges] = useState<string[]>([])
   const [selectedIdentity, setSelectedIdentity] = useState<string[]>([])
 
+  const [addresses, setAddresses] = useState<Address[]>([emptyAddress()])
+
   const [orgs, setOrgs] = useState<Org[]>([])
   const [orgSearch, setOrgSearch] = useState('')
   const [selectedOrg, setSelectedOrg] = useState<Org | null>(null)
   const [orgNotListed, setOrgNotListed] = useState(false)
   const [inviteOrgName, setInviteOrgName] = useState('')
   const [inviteOrgEmail, setInviteOrgEmail] = useState('')
+  const [attestations, setAttestations] = useState<string[]>([])
 
   const isOrgMode = practiceType === 'group_owner' || practiceType === 'institution'
+  const isTelehealthOnly = telehealth === 'Telehealth only'
 
   useEffect(() => {
     const supabase = createClient()
@@ -69,67 +85,88 @@ export default function JoinPage() {
     setter(list.includes(value) ? list.filter((x) => x !== value) : [...list, value])
   }
 
+  function updateAddress(i: number, field: keyof Address, value: string) {
+    setAddresses((cur) => cur.map((a, idx) => idx === i ? { ...a, [field]: value } : a))
+  }
+  function addAddress() { setAddresses((cur) => [...cur, emptyAddress()]) }
+  function removeAddress(i: number) { setAddresses((cur) => cur.filter((_, idx) => idx !== i)) }
+
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-
-    // Basic validation
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMsg('Photo must be under 5MB.')
-      return
-    }
-    if (!file.type.startsWith('image/')) {
-      setErrorMsg('Please upload an image file.')
-      return
-    }
+    if (file.size > 5 * 1024 * 1024) { setErrorMsg('Photo must be under 5MB.'); return }
+    if (!file.type.startsWith('image/')) { setErrorMsg('Please upload an image file.'); return }
 
     setUploadingPhoto(true)
     setErrorMsg('')
     const supabase = createClient()
-
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setErrorMsg('Please sign in first to upload a photo.')
-      setUploadingPhoto(false)
-      return
-    }
+    if (!user) { setErrorMsg('Please sign in first to upload a photo.'); setUploadingPhoto(false); return }
 
     const ext = file.name.split('.').pop()
     const fileName = `${user.id}-${Date.now()}.${ext}`
+    const { error: uploadError } = await supabase.storage.from('provider-photos').upload(fileName, file, { upsert: true })
+    if (uploadError) { setErrorMsg('Photo upload failed: ' + uploadError.message); setUploadingPhoto(false); return }
 
-    const { error: uploadError } = await supabase.storage
-      .from('provider-photos')
-      .upload(fileName, file, { upsert: true })
-
-    if (uploadError) {
-      setErrorMsg('Photo upload failed: ' + uploadError.message)
-      setUploadingPhoto(false)
-      return
-    }
-
-    const { data: urlData } = supabase.storage
-      .from('provider-photos')
-      .getPublicUrl(fileName)
-
+    const { data: urlData } = supabase.storage.from('provider-photos').getPublicUrl(fileName)
     setPhotoUrl(urlData.publicUrl)
     setUploadingPhoto(false)
   }
 
+  // Per-step required-field validation. Returns an error string or '' if OK.
+  function validateStep(s: number): string {
+    if (s === 0) {
+      if (!practiceType) return 'Please select a practice type.'
+      if (!fullName.trim()) return isOrgMode ? 'Please enter the admin contact name.' : 'Please enter your full name.'
+      if (!isOrgMode && !credentials.trim()) return 'Please enter your credentials or title.'
+      if (!practiceName.trim() && isOrgMode) return 'Please enter your organization name.'
+      if (!licenseNumber.trim()) return isOrgMode ? 'Please enter your group license or NPI.' : 'Please enter your license or certification number.'
+    }
+    if (s === 1) {
+      if (selectedCats.length === 0) return 'Please select at least one category.'
+    }
+    if (s === 2) {
+      if (selectedTags.length === 0) return 'Please select at least one specialty.'
+    }
+    if (s === 3) {
+      if (!primaryZip.trim()) return 'Please enter your primary zip code.'
+      if (!isTelehealthOnly) {
+        const a = addresses[0]
+        if (!a.street.trim() || !a.city.trim() || !a.zip.trim()) return 'Please enter at least your primary practice address (street, city, zip). It is optional only for telehealth-only providers.'
+      }
+    }
+    if (s === 5) {
+      if (!isOrgMode && !bio.trim()) return 'Please add a short professional bio.'
+      if (!email.trim()) return 'Please enter your email.'
+      if (!phone.trim()) return 'Please enter a phone number.'
+    }
+    return ''
+  }
+
+  function next() {
+    const err = validateStep(step)
+    if (err) { setErrorMsg(err); return }
+    setErrorMsg('')
+    setStep(step + 1)
+  }
+
   async function handleSubmit() {
     setErrorMsg('')
-    if (!fullName.trim() || !email.trim()) {
-      setErrorMsg('Please provide at least a name (Step 1) and email (Step 6).')
+    // Validate every step before final submit
+    for (let s = 0; s <= 5; s++) {
+      const err = validateStep(s)
+      if (err) { setErrorMsg(err); setStep(s); return }
+    }
+    if (attestations.length < ATTESTATIONS.length) {
+      setErrorMsg('Please confirm all provider attestations before submitting.')
+      setStep(5)
       return
     }
     setSaving(true)
     const supabase = createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      setErrorMsg('Please sign in first to submit your application.')
-      setSaving(false)
-      return
-    }
+    if (!user) { setErrorMsg('Please sign in first to submit your application.'); setSaving(false); return }
 
     const availMap: Record<string, string> = {
       'Yes — accepting now': 'accepting',
@@ -159,6 +196,7 @@ export default function JoinPage() {
         phone: phone || null,
         website: website || null,
         photo_url: photoUrl || null,
+        attested_at: new Date().toISOString(),
         vetting_status: 'pending',
         is_active: true,
         is_org: isOrgMode,
@@ -192,6 +230,24 @@ export default function JoinPage() {
         selectedInsurance.map((ins) => ({ provider_id: provider.id, insurance: ins }))
       )
     }
+
+    // Save addresses (skip empty ones). No .select() read-back to avoid RLS read issues.
+    const validAddresses = addresses.filter((a) => a.street.trim() || a.city.trim() || a.zip.trim())
+    if (validAddresses.length > 0) {
+      await supabase.from('provider_addresses').insert(
+        validAddresses.map((a, i) => ({
+          provider_id: provider.id,
+          label: a.label || null,
+          street: a.street || null,
+          city: a.city || null,
+          state: a.state || 'SC',
+          zip: a.zip || null,
+          visibility: 'full',
+          is_primary: i === 0,
+        }))
+      )
+    }
+
     if (!isOrgMode && orgNotListed && inviteOrgName.trim() && inviteOrgEmail.trim()) {
       await supabase.from('org_invitations').insert({
         requesting_provider_id: provider.id,
@@ -205,8 +261,8 @@ export default function JoinPage() {
   }
 
   const steps = isOrgMode
-    ? ['Org info', 'Care offered', 'Specialties', 'Access & logistics', 'Communities served', 'Org profile']
-    : ['Practice info', 'Categories', 'Specialties', 'Access & logistics', 'Identity & culture', 'Profile & contact']
+    ? ['Org info', 'Care offered', 'Specialties', 'Access & locations', 'Communities served', 'Org profile']
+    : ['Practice info', 'Categories', 'Specialties', 'Access & location', 'Identity & culture', 'Profile & contact']
 
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
@@ -217,7 +273,7 @@ export default function JoinPage() {
 
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 40px' }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: dark, marginBottom: 4 }}>Join the network</h1>
-        <p style={{ fontSize: 15, color: '#666', marginBottom: 20 }}>{isOrgMode ? 'Register your organization on Tidal Care Network.' : 'Your answers shape how you appear in search and referrals.'}</p>
+        <p style={{ fontSize: 15, color: '#666', marginBottom: 20 }}>{isOrgMode ? 'Register your organization on Tidal Care Network.' : 'Your answers shape how you appear in search and referrals.'} <span style={{ color: '#b3504f' }}>*</span> marks required fields.</p>
 
         <div style={{ display: 'flex', gap: 4, marginBottom: 28, flexWrap: 'wrap' }}>
           {steps.map((s, i) => (
@@ -229,8 +285,8 @@ export default function JoinPage() {
 
         {step === 0 && (
           <Card>
-            <Field label="Practice type">
-              <select style={inp} value={practiceType} onChange={(e) => setPracticeType(e.target.value)}>
+            <Field label="Practice type" required>
+              <select style={selectStyle} value={practiceType} onChange={(e) => setPracticeType(e.target.value)}>
                 <option value="">Select…</option>
                 <option value="individual">Individual / solo practice</option>
                 <option value="group_owner">Group practice — I am the org admin</option>
@@ -238,15 +294,15 @@ export default function JoinPage() {
               </select>
             </Field>
 
-            <Field label={isOrgMode ? 'Admin contact name' : 'Full name'}><input style={inp} value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={isOrgMode ? 'Name of person managing this account' : 'First and last name'} /></Field>
-            <Field label={isOrgMode ? 'Your title / role (optional)' : 'Credentials / title'}><input style={inp} value={credentials} onChange={(e) => setCredentials(e.target.value)} placeholder={isOrgMode ? 'e.g. Clinical Director, Office Manager' : 'e.g. LCSW, MD, RD, OTR/L'} /></Field>
-            <Field label={isOrgMode ? 'Organization name' : 'Practice or organization name (optional)'}><input style={inp} value={practiceName} onChange={(e) => setPracticeName(e.target.value)} placeholder={isOrgMode ? 'Your organization name' : 'Leave blank if solo practice'} /></Field>
+            <Field label={isOrgMode ? 'Admin contact name' : 'Full name'} required><input style={inp} value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={isOrgMode ? 'Name of person managing this account' : 'First and last name'} /></Field>
+            <Field label={isOrgMode ? 'Your title / role (optional)' : 'Credentials / title'} required={!isOrgMode}><input style={inp} value={credentials} onChange={(e) => setCredentials(e.target.value)} placeholder={isOrgMode ? 'e.g. Clinical Director, Office Manager' : 'e.g. LCSW, MD, RD, OTR/L'} /></Field>
+            <Field label={isOrgMode ? 'Organization name' : 'Practice or organization name (optional)'} required={isOrgMode}><input style={inp} value={practiceName} onChange={(e) => setPracticeName(e.target.value)} placeholder={isOrgMode ? 'Your organization name' : 'Leave blank if solo practice'} /></Field>
 
             {isOrgMode && (
               <Field label="Brief organization description"><textarea style={{ ...inp, minHeight: 70, resize: 'vertical' }} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="What your organization does and the care it provides." /></Field>
             )}
 
-            <Field label={isOrgMode ? 'Organization NPI / group license (if applicable)' : 'SC license or certification number'}><input style={inp} value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder={isOrgMode ? 'Group NPI or license number' : 'e.g. LCS-12345, OT-9876'} /></Field>
+            <Field label={isOrgMode ? 'Organization NPI / group license' : 'SC license or certification number'} required><input style={inp} value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder={isOrgMode ? 'Group NPI or license number' : 'e.g. LCS-12345, OT-9876'} /></Field>
             {!isOrgMode && <Field label="NPI number (if applicable)"><input style={inp} value={npiNumber} onChange={(e) => setNpiNumber(e.target.value)} placeholder="10-digit NPI" /></Field>}
             <Field label={isOrgMode ? 'Accreditation / certifying body (if applicable)' : 'Issuing body (if no SC license)'}><input style={inp} value={issuingBody} onChange={(e) => setIssuingBody(e.target.value)} placeholder={isOrgMode ? 'e.g. The Joint Commission, CARF' : 'e.g. NCCAOM, NBCC, AOTA'} /></Field>
 
@@ -263,7 +319,7 @@ export default function JoinPage() {
                   <>
                     <input style={inp} value={orgSearch} onChange={(e) => { setOrgSearch(e.target.value); setOrgNotListed(false) }} placeholder="Search organizations…" />
                     {orgSearch.trim() && (
-                      <div style={{ border: '1px solid #e5e3dc', borderRadius: 8, marginTop: 6, overflow: 'hidden' }}>
+                      <div style={{ border: '1px solid #d4d2ca', borderRadius: 8, marginTop: 6, overflow: 'hidden' }}>
                         {filteredOrgs.length > 0 ? (
                           filteredOrgs.map((o) => (
                             <button key={o.id} type="button" onClick={() => { setSelectedOrg(o); setOrgSearch('') }} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px', fontSize: 13, color: '#333', background: 'white', border: 'none', borderBottom: '1px solid #f0f0f0', cursor: 'pointer' }}>
@@ -297,7 +353,7 @@ export default function JoinPage() {
 
         {step === 1 && (
           <Card>
-            <p style={hint}>{isOrgMode ? 'Select the categories of care your organization offers across all providers.' : 'Select every resource category you practice in. You can choose more than one.'}</p>
+            <p style={hint}>{isOrgMode ? 'Select the categories of care your organization offers across all providers.' : 'Select every resource category you practice in. You can choose more than one.'} <span style={{ color: '#b3504f' }}>*</span></p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
               {CATEGORIES.map((c) => {
                 const on = selectedCats.includes(c.key)
@@ -316,6 +372,7 @@ export default function JoinPage() {
 
         {step === 2 && (
           <Card>
+            <p style={hint}>Select at least one specialty. <span style={{ color: '#b3504f' }}>*</span></p>
             {selectedCats.length === 0 ? (
               <p style={hint}>Go back and select at least one category first.</p>
             ) : (
@@ -344,34 +401,71 @@ export default function JoinPage() {
 
         {step === 3 && (
           <Card>
-            <Field label={isOrgMode ? 'Is your organization accepting new referrals?' : 'Currently accepting new clients?'}>
-              <select style={inp} value={availabilityStatus} onChange={(e) => setAvailabilityStatus(e.target.value)}>
+            <Field label={isOrgMode ? 'Is your organization accepting new referrals?' : 'Currently accepting new clients?'} required>
+              <select style={selectStyle} value={availabilityStatus} onChange={(e) => setAvailabilityStatus(e.target.value)}>
                 <option>Yes — accepting now</option>
                 <option>Limited — contact to inquire</option>
                 <option>Waitlist only</option>
                 <option>Not accepting</option>
               </select>
             </Field>
-            <Field label="Primary zip code"><input style={inp} value={primaryZip} onChange={(e) => setPrimaryZip(e.target.value)} placeholder="e.g. 29401" maxLength={5} /></Field>
-            <div style={{ marginBottom: 14 }}>
-              <div style={secLabel}>Insurance accepted</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {INSURANCE_OPTIONS.map((opt) => (<button key={opt} type="button" onClick={() => toggle(opt, selectedInsurance, setSelectedInsurance)} style={pill(selectedInsurance.includes(opt))}>{opt}</button>))}
-              </div>
-            </div>
-            <div style={{ marginBottom: 14 }}>
-              <div style={secLabel}>Age groups served</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {AGE_GROUPS.map((opt) => (<button key={opt} type="button" onClick={() => toggle(opt, selectedAges, setSelectedAges)} style={pill(selectedAges.includes(opt))}>{opt}</button>))}
-              </div>
-            </div>
-            <Field label="Telehealth offered?">
-              <select style={inp} value={telehealth} onChange={(e) => setTelehealth(e.target.value)}>
+            <Field label="Telehealth offered?" required>
+              <select style={selectStyle} value={telehealth} onChange={(e) => setTelehealth(e.target.value)}>
                 <option value="No — in-person only">No — in-person only</option>
                 <option value="Yes — telehealth available">Yes — telehealth available</option>
                 <option value="Telehealth only">Telehealth only</option>
               </select>
             </Field>
+            <Field label="Primary zip code" required><input style={inp} value={primaryZip} onChange={(e) => setPrimaryZip(e.target.value)} placeholder="e.g. 29401" maxLength={5} /></Field>
+
+            <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid #eee' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: dark, marginBottom: 4 }}>
+                {isOrgMode ? 'Practice locations' : 'Practice address'} {!isTelehealthOnly && <span style={{ color: '#b3504f' }}>*</span>}
+              </div>
+              <p style={{ fontSize: 12, color: '#888', marginBottom: 12, lineHeight: 1.5 }}>
+                {isTelehealthOnly
+                  ? 'Optional for telehealth-only providers. You may still add an address if you have one.'
+                  : isOrgMode
+                    ? 'Add each location your organization operates.'
+                    : 'Where you see clients in person.'}
+              </p>
+
+              {addresses.map((a, i) => (
+                <div key={i} style={{ marginBottom: 14, padding: 14, background: '#faf9f5', borderRadius: 8, border: '1px solid #eee' }}>
+                  {(isOrgMode || addresses.length > 1) && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <input style={{ ...inp, marginBottom: 0, fontSize: 13 }} value={a.label} onChange={(e) => updateAddress(i, 'label', e.target.value)} placeholder={`Location label (e.g. ${i === 0 ? 'Main office' : 'Mount Pleasant office'})`} />
+                      {addresses.length > 1 && <button type="button" onClick={() => removeAddress(i)} style={{ fontSize: 12, color: '#991b1b', background: 'none', border: 'none', cursor: 'pointer', marginLeft: 10, whiteSpace: 'nowrap' }}>Remove</button>}
+                    </div>
+                  )}
+                  <input style={{ ...inp, marginBottom: 8 }} value={a.street} onChange={(e) => updateAddress(i, 'street', e.target.value)} placeholder="Street address" />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input style={{ ...inp, marginBottom: 0, flex: 2 }} value={a.city} onChange={(e) => updateAddress(i, 'city', e.target.value)} placeholder="City" />
+                    <input style={{ ...inp, marginBottom: 0, flex: 1 }} value={a.state} onChange={(e) => updateAddress(i, 'state', e.target.value)} placeholder="State" maxLength={2} />
+                    <input style={{ ...inp, marginBottom: 0, flex: 1 }} value={a.zip} onChange={(e) => updateAddress(i, 'zip', e.target.value)} placeholder="Zip" maxLength={5} />
+                  </div>
+                </div>
+              ))}
+
+              {isOrgMode && (
+                <button type="button" onClick={addAddress} style={{ fontSize: 13, fontWeight: 500, color: teal, background: 'white', border: '1px solid ' + teal, padding: '8px 16px', borderRadius: 8, cursor: 'pointer' }}>
+                  + Add another location
+                </button>
+              )}
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <div style={secLabel}>Insurance accepted</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {INSURANCE_OPTIONS.map((opt) => (<button key={opt} type="button" onClick={() => toggle(opt, selectedInsurance, setSelectedInsurance)} style={pill(selectedInsurance.includes(opt))}>{opt}</button>))}
+              </div>
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <div style={secLabel}>Age groups served</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {AGE_GROUPS.map((opt) => (<button key={opt} type="button" onClick={() => toggle(opt, selectedAges, setSelectedAges)} style={pill(selectedAges.includes(opt))}>{opt}</button>))}
+              </div>
+            </div>
           </Card>
         )}
 
@@ -384,7 +478,7 @@ export default function JoinPage() {
           </Card>
         )}
 
-            {step === 5 && (
+        {step === 5 && (
           <Card>
             <Field label={isOrgMode ? 'Organization logo or photo (optional)' : 'Profile photo or logo (optional)'}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -407,27 +501,40 @@ export default function JoinPage() {
               </div>
             </Field>
 
-
             {!isOrgMode && (
-              <Field label="Professional bio (shown on your profile)">
+              <Field label="Professional bio (shown on your profile)" required>
                 <textarea style={{ ...inp, minHeight: 90, resize: 'vertical' }} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Describe your approach and what clients can expect. Write in first person." />
               </Field>
             )}
             {isOrgMode && (
               <div style={{ ...hint, padding: 12, background: mint, borderRadius: 8, color: dark }}>Your organization description from Step 1 will appear on your profile. After approval, you'll be able to add or invite the individual providers in your organization.</div>
             )}
-            <Field label={isOrgMode ? 'Main contact email' : 'Professional email'}><input style={inp} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" /></Field>
-            <Field label={isOrgMode ? 'Main phone (optional)' : 'Phone (optional)'}><input style={inp} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(843) 555-0000" /></Field>
+            <Field label={isOrgMode ? 'Main contact email' : 'Professional email'} required><input style={inp} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" /></Field>
+            <Field label={isOrgMode ? 'Main phone' : 'Phone'} required><input style={inp} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(843) 555-0000" /></Field>
             <Field label="Website (optional)"><input style={inp} value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://…" /></Field>
+
+            <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid #eee' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: dark, marginBottom: 4 }}>Provider attestation <span style={{ color: '#b3504f' }}>*</span></div>
+              <p style={{ fontSize: 12, color: '#888', marginBottom: 12, lineHeight: 1.5 }}>Please confirm each of the following. All are required to join the network.</p>
+              {ATTESTATIONS.map((a) => {
+                const on = attestations.includes(a)
+                return (
+                  <label key={a} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#444', cursor: 'pointer', marginBottom: 10, lineHeight: 1.5 }}>
+                    <input type="checkbox" checked={on} onChange={() => toggle(a, attestations, setAttestations)} style={{ marginTop: 3, flexShrink: 0 }} />
+                    <span>{a}</span>
+                  </label>
+                )
+              })}
+            </div>
           </Card>
         )}
 
         {errorMsg && <p style={{ fontSize: 14, color: '#b91c1c', marginTop: 12 }}>{errorMsg}</p>}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', margin: '20px 0 64px' }}>
-          <button type="button" onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0} style={{ fontSize: 14, padding: '10px 18px', borderRadius: 8, border: '1px solid #d4d2ca', background: 'white', color: step === 0 ? '#bbb' : dark, cursor: step === 0 ? 'default' : 'pointer' }}>← Back</button>
+          <button type="button" onClick={() => { setErrorMsg(''); setStep(Math.max(0, step - 1)) }} disabled={step === 0} style={{ fontSize: 14, padding: '10px 18px', borderRadius: 8, border: '1px solid #d4d2ca', background: 'white', color: step === 0 ? '#bbb' : dark, cursor: step === 0 ? 'default' : 'pointer' }}>← Back</button>
           {step < 5 ? (
-            <button type="button" onClick={() => setStep(step + 1)} style={{ fontSize: 14, fontWeight: 500, padding: '10px 22px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: 'pointer' }}>Next →</button>
+            <button type="button" onClick={next} style={{ fontSize: 14, fontWeight: 500, padding: '10px 22px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: 'pointer' }}>Next →</button>
           ) : (
             <button type="button" onClick={handleSubmit} disabled={saving} style={{ fontSize: 14, fontWeight: 500, padding: '10px 22px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1 }}>{saving ? 'Submitting…' : 'Submit application'}</button>
           )}
@@ -437,7 +544,13 @@ export default function JoinPage() {
   )
 }
 
-const inp: React.CSSProperties = { width: '100%', padding: '9px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, background: 'white', color: '#1a1a1a' }
+const inp: React.CSSProperties = { width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, background: 'white', color: '#1a1a1a' }
+const selectStyle: React.CSSProperties = {
+  width: '100%', padding: '10px 36px 10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: 'white',
+  appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%233e6a70' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
+  backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', cursor: 'pointer',
+}
 const hint: React.CSSProperties = { fontSize: 13, color: '#666', lineHeight: 1.6, marginBottom: 14 }
 const secLabel: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }
 
@@ -445,8 +558,8 @@ function pill(on: boolean): React.CSSProperties {
   return { fontSize: 12, padding: '4px 11px', borderRadius: 99, cursor: 'pointer', border: on ? '1px solid ' + teal : '1px solid #d4d2ca', background: on ? mint : 'white', color: on ? dark : '#666', fontWeight: on ? 500 : 400 }
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (<div style={{ marginBottom: 14 }}><label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#444', marginBottom: 5 }}>{label}</label>{children}</div>)
+function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
+  return (<div style={{ marginBottom: 14 }}><label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: '#444', marginBottom: 5 }}>{label}{required && <span style={{ color: '#b3504f' }}> *</span>}</label>{children}</div>)
 }
 
 function Card({ children }: { children: React.ReactNode }) {

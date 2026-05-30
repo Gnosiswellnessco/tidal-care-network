@@ -32,7 +32,7 @@ export async function POST(request: Request) {
           <h2 style="color: ${teal};">You've been asked for an endorsement</h2>
           <p>Hello${e.endorser_name ? ' ' + e.endorser_name : ''},</p>
           <p><strong>${providerName}</strong>${provider?.practice_name ? ` of ${provider.practice_name}` : ''} has joined Tidal Care Network, a community wellness provider directory, and has listed you as a professional colleague who can endorse them.</p>
-          <p>An endorsement simply confirms that you know this provider professionally and can vouch for their standing. It takes one click.</p>
+          <p>By endorsing, you affirm that you know this provider professionally and that, to the best of your knowledge, they abide by the ethical standards of their profession, are competent in their area of practice, and that you know of no reason clients should not be referred to them.</p>
           <p><a href="${link}" style="display:inline-block;background:${teal};color:white;padding:11px 22px;border-radius:8px;text-decoration:none;font-weight:500;">Review the request</a></p>
           <p style="color:#888;font-size:13px;margin-top:24px;">If you don't recognize this provider, you can safely ignore this email or decline on the page above.</p>
         </div>`,
