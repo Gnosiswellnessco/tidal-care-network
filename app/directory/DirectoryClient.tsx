@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES, TAGS } from '@/lib/taxonomy'
+import { RatingDisplay } from '@/components/RatingWidget'
 
 const teal = '#3e6a70'
 const dark = '#2c4d52'
@@ -249,6 +250,9 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                     </div>
                   )}
                   {p.availability_status === 'accepting' && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 6, background: '#eaf3de', color: '#27500a' }}>Accepting clients</span>}
+                  <div style={{ marginTop: 8 }}>
+                    <RatingDisplay avg={p.rating_avg ?? null} count={p.rating_count ?? 0} size={14} />
+                  </div>
                 </Link>
               </div>
             ))}

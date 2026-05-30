@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { CATEGORIES, TAGS } from '@/lib/taxonomy'
+import { RatingDisplay, RatingSubmit } from '@/components/RatingWidget'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,6 +34,13 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
     .eq('status', 'confirmed')
 
   const isEndorsed = (endorsements?.length || 0) > 0
+  const { data: ratingRows } = await supabase
+    .from('ratings')
+    .select('stars')
+    .eq('provider_id', id)
+
+  const ratingCount = ratingRows?.length || 0
+  const ratingAvg = ratingCount > 0 ? (ratingRows!.reduce((a, r) => a + r.stars, 0) / ratingCount) : null
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 900, margin: '0 auto' }}>
@@ -68,6 +76,9 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
               {p.availability_status === 'accepting' && (
                 <span style={{ display: 'inline-block', marginTop: 8, fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 6, background: '#eaf3de', color: '#27500a' }}>Accepting new clients</span>
               )}
+              <div style={{ marginTop: 8 }}>
+                <RatingDisplay avg={ratingAvg} count={ratingCount} size={18} />
+              </div>
             </div>
           </div>
 
@@ -109,6 +120,10 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
               {p.phone && <div>Phone: {p.phone}</div>}
               {p.website && <div>Website: <a href={p.website} target="_blank" rel="noopener noreferrer" style={{ color: '#3e6a70' }}>{p.website}</a></div>}
             </div>
+          </Section>
+
+          <Section title="Reviews">
+            <RatingSubmit providerId={id} />
           </Section>
 
         </div>
