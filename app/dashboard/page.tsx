@@ -38,10 +38,16 @@ export default async function DashboardPage() {
               Welcome back, <strong>{provider.full_name}</strong>.
             </p>
             {provider.vetting_status === 'approved' && (
-              <Link href="/refer" style={{ display: 'inline-block', marginTop: 16, fontSize: 14, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
-                Create a referral →
-              </Link>
+              <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
+                <Link href="/refer" style={{ display: 'inline-block', fontSize: 14, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
+                  Create a referral →
+                </Link>
+                <Link href="/dashboard/edit" style={{ display: 'inline-block', fontSize: 14, fontWeight: 500, color: '#3e6a70', background: 'white', border: '1px solid #3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
+                  Edit profile
+                </Link>
+              </div>
             )}
+            
             <div style={{ marginTop: 20, padding: '14px 16px', background: '#e8eff0', borderRadius: 10 }}>
               <p style={{ fontSize: 13, color: '#2c4d52', lineHeight: 1.6, margin: 0 }}>
                 <strong>Boost your visibility.</strong> Providers with peer endorsements appear higher in the directory search results. Request an endorsement from a colleague below — it only takes them one click to confirm.
