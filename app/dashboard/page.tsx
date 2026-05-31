@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import EndorsementRequest from '@/components/EndorsementRequest'
+import ReferralSources from '@/components/ReferralSources'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,6 +49,9 @@ export default async function DashboardPage() {
             </div>
             <div>
               <EndorsementRequest providerId={provider.id} />
+            </div>
+            <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #eee' }}>
+              <ReferralSources providerId={provider.id} />
             </div>
            
           </div>

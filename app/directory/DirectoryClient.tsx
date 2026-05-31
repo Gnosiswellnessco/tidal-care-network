@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES, TAGS } from '@/lib/taxonomy'
 import { RatingDisplay } from '@/components/RatingWidget'
+
 
 const teal = '#3e6a70'
 const dark = '#2c4d52'
@@ -48,6 +49,9 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   const [error, setError] = useState('')
   const [shareUrl, setShareUrl] = useState('')
   const [emailNote, setEmailNote] = useState('')
+  const [myProviderId, setMyProviderId] = useState<string | null>(null)
+  const [favorites, setFavorites] = useState<string[]>([])
+  const [loggedIn, setLoggedIn] = useState(false)
 
   // Show terms gate if not previously acknowledged
   useState(() => {
@@ -60,6 +64,30 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   function acceptTerms() {
     window.localStorage.setItem('tcn_terms_agreed', 'yes')
     setAgreed(true)
+  }
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return
+      setLoggedIn(true)
+      const { data: me } = await supabase.from('providers').select('id').eq('user_id', user.id).maybeSingle()
+      if (!me) return
+      setMyProviderId(me.id)
+      const { data: favs } = await supabase.from('provider_favorites').select('favorite_provider_id').eq('owner_provider_id', me.id)
+      setFavorites((favs || []).map((f) => f.favorite_provider_id))
+    })
+  }, [])
+
+  async function toggleFavorite(targetId: string) {
+    if (!myProviderId) return
+    const supabase = createClient()
+    if (favorites.includes(targetId)) {
+      await supabase.from('provider_favorites').delete().eq('owner_provider_id', myProviderId).eq('favorite_provider_id', targetId)
+      setFavorites((cur) => cur.filter((id) => id !== targetId))
+    } else {
+      await supabase.from('provider_favorites').insert({ owner_provider_id: myProviderId, favorite_provider_id: targetId })
+      setFavorites((cur) => [...cur, targetId])
+    }
   }
 
   const specialtyOptions = useMemo(() => {
@@ -187,8 +215,14 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
         <Link href="/"><img src="/logo.svg" alt="Tidal Care Network" style={{ height: 56, width: 'auto' }} /></Link>
         <nav style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
           <Link href="/directory" style={{ fontSize: 15, color: teal, fontWeight: 500, textDecoration: 'none' }}>Find a provider</Link>
-          <Link href="/login" style={{ fontSize: 15, color: dark, textDecoration: 'none' }}>Provider login</Link>
-          <Link href="/login?next=/join" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>Join the network</Link>
+          {myProviderId ? (
+            <Link href="/dashboard" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>My dashboard</Link>
+          ) : (
+            <>
+              <Link href="/login" style={{ fontSize: 15, color: dark, textDecoration: 'none' }}>Provider login</Link>
+              <Link href="/login?next=/join" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>Join the network</Link>
+            </>
+          )}
         </nav>
       </header>
 
@@ -224,9 +258,16 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
             {filtered.map((p) => (
               <div key={p.id} style={{ background: 'white', borderRadius: 12, border: isSelected(p.id) ? `2px solid ${teal}` : '1px solid #e5e3dc', padding: 24, position: 'relative' }}>
-                <label style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: teal, cursor: 'pointer', fontWeight: 500 }}>
-                  <input type="checkbox" checked={isSelected(p.id)} onChange={() => toggleSelect(p)} /> Refer
-                </label>
+                <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {myProviderId && myProviderId !== p.id && (
+                    <button onClick={() => toggleFavorite(p.id)} title={favorites.includes(p.id) ? 'Remove from referral sources' : 'Add to referral sources'} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, display: 'flex' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill={favorites.includes(p.id) ? '#d6536d' : 'none'} stroke={favorites.includes(p.id) ? '#d6536d' : '#c9c6bd'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    </button>
+                  )}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: teal, cursor: 'pointer', fontWeight: 500 }}>
+                    <input type="checkbox" checked={isSelected(p.id)} onChange={() => toggleSelect(p)} /> Refer
+                  </label>
+                </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                   <img src="/vetted.svg" alt="Vetted" style={{ height: 20, width: 'auto', display: 'block' }} />

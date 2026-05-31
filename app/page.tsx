@@ -1,10 +1,17 @@
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
 
-export default function HomePage() {
+export const dynamic = 'force-dynamic'
+
+export default async function HomePage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const loggedIn = !!user
+
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2' }}>
 
-  {/* Top bar — sponsor credit left, navigation right */}
+      {/* Top bar — sponsor credit left, navigation right */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 1100, margin: '0 auto', flexWrap: 'wrap', gap: 12 }}>
         <div style={{ fontSize: 14, color: '#999' }}>
           A community initiative sponsored by{' '}
@@ -14,8 +21,14 @@ export default function HomePage() {
         </div>
         <nav style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
           <Link href="/directory" style={{ fontSize: 15, color: '#2c4d52', textDecoration: 'none' }}>Find a provider</Link>
-          <Link href="/login" style={{ fontSize: 15, color: '#2c4d52', textDecoration: 'none' }}>Provider login</Link>
-          <Link href="/login" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>Join the network</Link>
+          {loggedIn ? (
+            <Link href="/dashboard" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>My dashboard</Link>
+          ) : (
+            <>
+              <Link href="/login" style={{ fontSize: 15, color: '#2c4d52', textDecoration: 'none' }}>Provider login</Link>
+              <Link href="/login" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>Join the network</Link>
+            </>
+          )}
         </nav>
       </div>
 
@@ -46,7 +59,7 @@ export default function HomePage() {
             Tidal Care Network is a free, community-based referral network for licensed clinicians, holistic and integrative practitioners, and allied health professionals. We make it easier for providers to connect their clients to trusted, vetted colleagues across every dimension of wellness — mental health, psychiatry, primary and specialty medical care, nutrition, addiction recovery, speech-language services, bodywork, peer support, and more.
           </p>
           <p style={{ fontSize: 16, lineHeight: 1.7, color: '#444', marginBottom: 16 }}>
-            Tidal Care Network is a free, community-based referral network rooted in Charleston, South Carolina, serving the Lowcountry and growing across the state. We connect licensed clinicians, holistic and integrative practitioners, and allied health professionals — making it easier for providers to link their clients to trusted, vetted colleagues across every dimension of wellness: mental health, psychiatry, primary and specialty medical care, nutrition, addiction recovery, speech-language services, bodywork, peer support, and more.
+            Rooted in Charleston, South Carolina, serving the Lowcountry and growing across the state. We connect licensed clinicians, holistic and integrative practitioners, and allied health professionals — making it easier for providers to link their clients to trusted, vetted colleagues across every dimension of wellness.
           </p>
         </div>
       </section>
