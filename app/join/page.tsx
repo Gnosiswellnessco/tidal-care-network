@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORIES, TAGS, INSURANCE_OPTIONS, AGE_GROUPS, IDENTITY_TAGS } from '@/lib/taxonomy'
+import { CATEGORIES, INSURANCE_OPTIONS, AGE_GROUPS, IDENTITY_TAGS } from '@/lib/taxonomy'
+import { useMergedTags } from '@/hooks/useTaxonomy'
 import { CategoryIcon } from '@/components/CategoryIcon'
 
 const teal = '#3e6a70'
@@ -22,11 +23,13 @@ const ATTESTATIONS = [
 
 type Org = { id: string; full_name: string; practice_name: string | null }
 type Address = { label: string; street: string; city: string; state: string; zip: string }
+type TagReq = { category: string; section: string; tag: string }
 
 const emptyAddress = (): Address => ({ label: '', street: '', city: '', state: 'SC', zip: '' })
 
 export default function JoinPage() {
   const router = useRouter()
+  const TAGS = useMergedTags()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
@@ -53,8 +56,12 @@ export default function JoinPage() {
   const [selectedInsurance, setSelectedInsurance] = useState<string[]>([])
   const [selectedAges, setSelectedAges] = useState<string[]>([])
   const [selectedIdentity, setSelectedIdentity] = useState<string[]>([])
-
   const [addresses, setAddresses] = useState<Address[]>([emptyAddress()])
+
+  // Tag requests collected during the form, saved after provider is created
+  const [tagRequests, setTagRequests] = useState<TagReq[]>([])
+  const [reqOpenFor, setReqOpenFor] = useState<string | null>(null) // "category|||section"
+  const [reqText, setReqText] = useState('')
 
   const [orgs, setOrgs] = useState<Org[]>([])
   const [orgSearch, setOrgSearch] = useState('')
@@ -85,6 +92,16 @@ export default function JoinPage() {
     setter(list.includes(value) ? list.filter((x) => x !== value) : [...list, value])
   }
 
+  function addTagRequest(category: string, section: string) {
+    if (!reqText.trim()) return
+    setTagRequests((c) => [...c, { category, section, tag: reqText.trim() }])
+    setReqText('')
+    setReqOpenFor(null)
+  }
+  function removeTagRequest(idx: number) {
+    setTagRequests((c) => c.filter((_, i) => i !== idx))
+  }
+
   function updateAddress(i: number, field: keyof Address, value: string) {
     setAddresses((cur) => cur.map((a, idx) => idx === i ? { ...a, [field]: value } : a))
   }
@@ -96,24 +113,20 @@ export default function JoinPage() {
     if (!file) return
     if (file.size > 5 * 1024 * 1024) { setErrorMsg('Photo must be under 5MB.'); return }
     if (!file.type.startsWith('image/')) { setErrorMsg('Please upload an image file.'); return }
-
     setUploadingPhoto(true)
     setErrorMsg('')
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setErrorMsg('Please sign in first to upload a photo.'); setUploadingPhoto(false); return }
-
     const ext = file.name.split('.').pop()
     const fileName = `${user.id}-${Date.now()}.${ext}`
     const { error: uploadError } = await supabase.storage.from('provider-photos').upload(fileName, file, { upsert: true })
     if (uploadError) { setErrorMsg('Photo upload failed: ' + uploadError.message); setUploadingPhoto(false); return }
-
     const { data: urlData } = supabase.storage.from('provider-photos').getPublicUrl(fileName)
     setPhotoUrl(urlData.publicUrl)
     setUploadingPhoto(false)
   }
 
-  // Per-step required-field validation. Returns an error string or '' if OK.
   function validateStep(s: number): string {
     if (s === 0) {
       if (!practiceType) return 'Please select a practice type.'
@@ -126,7 +139,7 @@ export default function JoinPage() {
       if (selectedCats.length === 0) return 'Please select at least one category.'
     }
     if (s === 2) {
-      if (selectedTags.length === 0) return 'Please select at least one specialty.'
+      if (selectedTags.length === 0 && tagRequests.length === 0) return 'Please select at least one specialty (or request one).'
     }
     if (s === 3) {
       if (!primaryZip.trim()) return 'Please enter your primary zip code.'
@@ -152,7 +165,6 @@ export default function JoinPage() {
 
   async function handleSubmit() {
     setErrorMsg('')
-    // Validate every step before final submit
     for (let s = 0; s <= 5; s++) {
       const err = validateStep(s)
       if (err) { setErrorMsg(err); setStep(s); return }
@@ -231,11 +243,31 @@ export default function JoinPage() {
       )
     }
 
-    // Save addresses (skip empty ones). No .select() read-back to avoid RLS read issues.
+    // Save any requested tags as pending tag_requests
+    if (tagRequests.length > 0) {
+      await supabase.from('tag_requests').insert(
+        tagRequests.map((r) => ({
+          provider_id: provider.id, category: r.category, section: r.section, requested_tag: r.tag, status: 'pending',
+        }))
+      )
+    }
+
     const validAddresses = addresses.filter((a) => a.street.trim() || a.city.trim() || a.zip.trim())
     if (validAddresses.length > 0) {
-      await supabase.from('provider_addresses').insert(
-        validAddresses.map((a, i) => ({
+      const rows = await Promise.all(validAddresses.map(async (a, i) => {
+        let latitude = null
+        let longitude = null
+        try {
+          const full = `${a.street}, ${a.city}, ${a.state} ${a.zip}`
+          const res = await fetch('/api/geocode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address: full }),
+          })
+          const geo = await res.json()
+          if (geo.latitude != null) { latitude = geo.latitude; longitude = geo.longitude }
+        } catch {}
+        return {
           provider_id: provider.id,
           label: a.label || null,
           street: a.street || null,
@@ -244,8 +276,11 @@ export default function JoinPage() {
           zip: a.zip || null,
           visibility: 'full',
           is_primary: i === 0,
-        }))
-      )
+          latitude,
+          longitude,
+        }
+      }))
+      await supabase.from('provider_addresses').insert(rows)
     }
 
     if (!isOrgMode && orgNotListed && inviteOrgName.trim() && inviteOrgEmail.trim()) {
@@ -267,7 +302,7 @@ export default function JoinPage() {
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 900, margin: '0 auto' }}>
-        <Link href="/"><img src="/logo.svg" alt="Tidal Care Network" style={{ height: 48, width: 'auto' }} /></Link>
+        <Link href="/"><img src="/tidal-care-network.svg" alt="Tidal Care Network" style={{ height: 180, width: 'auto' }} /></Link>
         <Link href="/" style={{ fontSize: 14, color: teal, textDecoration: 'none' }}>Cancel</Link>
       </header>
 
@@ -372,7 +407,7 @@ export default function JoinPage() {
 
         {step === 2 && (
           <Card>
-            <p style={hint}>Select at least one specialty. <span style={{ color: '#b3504f' }}>*</span></p>
+            <p style={hint}>Select at least one specialty. Don't see one you need? Use "Request to add" under any group — we'll review it. <span style={{ color: '#b3504f' }}>*</span></p>
             {selectedCats.length === 0 ? (
               <p style={hint}>Go back and select at least one category first.</p>
             ) : (
@@ -381,17 +416,36 @@ export default function JoinPage() {
                 return (
                   <div key={catKey} style={{ marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #eee' }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: dark, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}><CategoryIcon name={catKey} size={18} /> {cat?.label}</div>
-                    {TAGS[catKey]?.map((section) => (
-                      <div key={section.title} style={{ marginBottom: 12 }}>
-                        <div style={secLabel}>{section.title}</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          {section.options.map((opt) => {
-                            const on = selectedTags.includes(catKey + ':' + opt)
-                            return (<button key={opt} type="button" onClick={() => toggle(catKey + ':' + opt, selectedTags, setSelectedTags)} style={pill(on)}>{opt}</button>)
-                          })}
+                    {TAGS[catKey]?.map((section) => {
+                      const reqKey = catKey + '|||' + section.title
+                      const pendingForSection = tagRequests.filter((r) => r.category === catKey && r.section === section.title)
+                      return (
+                        <div key={section.title} style={{ marginBottom: 12 }}>
+                          <div style={secLabel}>{section.title}</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {section.options.map((opt) => {
+                              const on = selectedTags.includes(catKey + ':' + opt)
+                              return (<button key={opt} type="button" onClick={() => toggle(catKey + ':' + opt, selectedTags, setSelectedTags)} style={pill(on)}>{opt}</button>)
+                            })}
+                            {pendingForSection.map((r, i) => (
+                              <span key={'req' + i} style={{ fontSize: 12, padding: '4px 11px', borderRadius: 99, background: '#fef3e2', color: '#9a6b1e', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                {r.tag} · pending
+                                <button type="button" onClick={() => removeTagRequest(tagRequests.indexOf(r))} style={{ background: 'none', border: 'none', color: '#9a6b1e', cursor: 'pointer', padding: 0, fontSize: 13 }}>×</button>
+                              </span>
+                            ))}
+                          </div>
+                          {reqOpenFor === reqKey ? (
+                            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                              <input autoFocus value={reqText} onChange={(e) => setReqText(e.target.value)} placeholder={`Suggest a ${section.title.toLowerCase()} tag`} style={{ ...inp, fontSize: 13, padding: '7px 10px' }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTagRequest(catKey, section.title) } }} />
+                              <button type="button" onClick={() => addTagRequest(catKey, section.title)} style={{ fontSize: 12, fontWeight: 500, color: 'white', background: teal, border: 'none', padding: '0 14px', borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap' }}>Request</button>
+                              <button type="button" onClick={() => { setReqOpenFor(null); setReqText('') }} style={{ fontSize: 12, color: '#888', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                            </div>
+                          ) : (
+                            <button type="button" onClick={() => { setReqOpenFor(reqKey); setReqText('') }} style={{ fontSize: 12, color: teal, background: 'none', border: 'none', cursor: 'pointer', marginTop: 8, padding: 0 }}>+ Request to add</button>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )
               })

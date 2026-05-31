@@ -60,7 +60,7 @@ export default async function ClientReferralPage({ params }: { params: Promise<{
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
       <header style={{ textAlign: 'center', padding: '32px 40px 8px' }}>
-        <img src="/logo.svg" alt="Tidal Care Network" style={{ height: 64, width: 'auto' }} />
+        <img src="/tidal-care-network.svg" alt="Tidal Care Network" style={{ height: 64, width: 'auto' }} />
       </header>
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '16px 40px 64px' }}>

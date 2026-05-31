@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import EndorsementRequest from '@/components/EndorsementRequest'
 import ReferralSources from '@/components/ReferralSources'
+import SignOutButton from '@/components/SignOutButton'
+import BrandLogo from '@/components/BrandLogo'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,8 +27,11 @@ export default async function DashboardPage() {
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#f7f6f2' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 900, margin: '0 auto' }}>
-        <Link href="/"><img src="/logo.svg" alt="Tidal Care Network" style={{ height: 48, width: 'auto' }} /></Link>
-        <span style={{ fontSize: 14, color: '#666' }}>{user.email}</span>
+        <BrandLogo height={180} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+  <span style={{ fontSize: 14, color: '#666' }}>{user.email}</span>
+  <SignOutButton />
+</div>
       </header>
 
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '24px 40px' }}>

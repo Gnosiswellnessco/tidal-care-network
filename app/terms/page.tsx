@@ -6,7 +6,7 @@ export default function TermsPage() {
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 800, margin: '0 auto' }}>
-        <Link href="/"><img src="/logo.svg" alt="Tidal Care Network" style={{ height: 48, width: 'auto' }} /></Link>
+        <Link href="/"><img src="/tidal-care-network.svg" alt="Tidal Care Network" style={{ height: 180, width: 'auto' }} /></Link>
         <Link href="/directory" style={{ fontSize: 14, color: '#3e6a70', textDecoration: 'none' }}>Directory →</Link>
       </header>
 

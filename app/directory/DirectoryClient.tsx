@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES, TAGS } from '@/lib/taxonomy'
 import { RatingDisplay } from '@/components/RatingWidget'
+import DirectoryMap from '@/components/DirectoryMap'
+import SignOutButton from '@/components/SignOutButton'
+import BrandLogo from '@/components/BrandLogo'
 
 
 const teal = '#3e6a70'
@@ -24,6 +27,10 @@ type Provider = {
   is_endorsed?: boolean
   rating_avg?: number | null
   rating_count?: number
+  map_lat?: number | null
+  map_lng?: number | null
+  map_label?: string | null
+  map_visibility?: string
 }
 
 export default function DirectoryClient({ providers }: { providers: Provider[] }) {
@@ -52,6 +59,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   const [myProviderId, setMyProviderId] = useState<string | null>(null)
   const [favorites, setFavorites] = useState<string[]>([])
   const [loggedIn, setLoggedIn] = useState(false)
+  const [view, setView] = useState<'list' | 'map'>('list')
 
   // Show terms gate if not previously acknowledged
   useState(() => {
@@ -192,7 +200,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
       {!agreed && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(20,30,32,0.6)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ background: 'white', borderRadius: 16, maxWidth: 480, padding: 32, textAlign: 'center' }}>
-            <img src="/logo.svg" alt="Tidal Care Network" style={{ height: 48, width: 'auto', marginBottom: 16 }} />
+            <img src="/tidal-care-network.svg" alt="Tidal Care Network" style={{ height: 48, width: 'auto', marginBottom: 16 }} />
             <h2 style={{ fontSize: 20, fontWeight: 700, color: dark, marginBottom: 12 }}>Before you browse</h2>
             <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, marginBottom: 16, textAlign: 'left' }}>
               Tidal Care Network is a directory only. The providers listed are independent professionals — we are not responsible for the care they provide, and a listing is not an endorsement or guarantee. You are responsible for evaluating any provider and verifying their credentials before engaging them.
@@ -212,11 +220,14 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
         </div>
       )}
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 1100, margin: '0 auto' }}>
-        <Link href="/"><img src="/logo.svg" alt="Tidal Care Network" style={{ height: 56, width: 'auto' }} /></Link>
+        <Link href="/"><img src="/tidal-care-network.svg" alt="Tidal Care Network" style={{ height: 180, width: 'auto' }} /></Link>
         <nav style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
           <Link href="/directory" style={{ fontSize: 15, color: teal, fontWeight: 500, textDecoration: 'none' }}>Find a provider</Link>
           {myProviderId ? (
-            <Link href="/dashboard" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>My dashboard</Link>
+            <>
+              <Link href="/dashboard" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>My dashboard</Link>
+              <SignOutButton />
+            </>
           ) : (
             <>
               <Link href="/login" style={{ fontSize: 15, color: dark, textDecoration: 'none' }}>Provider login</Link>
@@ -252,7 +263,27 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
       </section>
 
       <section style={{ maxWidth: 1000, margin: '0 auto', padding: '8px 40px 100px' }}>
-        {filtered.length === 0 ? (
+        <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
+          <button onClick={() => setView('list')} style={{ fontSize: 13, fontWeight: 500, padding: '8px 18px', borderRadius: 8, cursor: 'pointer', border: view === 'list' ? `2px solid ${teal}` : '1px solid #d4d2ca', background: view === 'list' ? mint : 'white', color: dark }}>List</button>
+          <button onClick={() => setView('map')} style={{ fontSize: 13, fontWeight: 500, padding: '8px 18px', borderRadius: 8, cursor: 'pointer', border: view === 'map' ? `2px solid ${teal}` : '1px solid #d4d2ca', background: view === 'map' ? mint : 'white', color: dark }}>Map</button>
+        </div>
+
+        {view === 'map' ? (
+          <DirectoryMap
+            providers={filtered.filter((p) => p.map_lat != null && p.map_lng != null).map((p) => ({
+              id: p.id, full_name: p.full_name, practice_name: p.practice_name, is_org: p.is_org, credentials: p.credentials,
+              latitude: p.map_lat as number, longitude: p.map_lng as number, label: p.map_label ?? null, visibility: p.map_visibility ?? 'full',
+              categories: p.provider_categories.map((c) => categoryLabel(c.category)),
+              tags: p.provider_tags.map((t) => t.tag_value),
+              bio: p.bio,
+            }))}
+            selectedIds={selected.map((s) => s.id)}
+            onAddToReferral={(id) => {
+              const prov = providers.find((p) => p.id === id)
+              if (prov && !selected.some((s) => s.id === id)) { setSelected((cur) => [...cur, prov]); setTrayOpen(true) }
+            }}
+          />
+        ) : filtered.length === 0 ? (
           <p style={{ fontSize: 15, color: '#888', padding: '32px 0', textAlign: 'center' }}>No providers match your filters.</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>

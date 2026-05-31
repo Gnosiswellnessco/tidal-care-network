@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import SignOutButton from '@/components/SignOutButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +23,10 @@ export default async function HomePage() {
         <nav style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
           <Link href="/directory" style={{ fontSize: 15, color: '#2c4d52', textDecoration: 'none' }}>Find a provider</Link>
           {loggedIn ? (
-            <Link href="/dashboard" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>My dashboard</Link>
+            <>
+              <Link href="/dashboard" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>My dashboard</Link>
+              <SignOutButton />
+            </>
           ) : (
             <>
               <Link href="/login" style={{ fontSize: 15, color: '#2c4d52', textDecoration: 'none' }}>Provider login</Link>

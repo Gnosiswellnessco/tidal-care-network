@@ -231,8 +231,20 @@ export default function EditProfilePage() {
     await supabase.from('provider_addresses').delete().eq('provider_id', providerId)
     const validAddresses = addresses.filter((a) => a.street.trim() || a.city.trim() || a.zip.trim())
     if (validAddresses.length > 0) {
-      await supabase.from('provider_addresses').insert(
-        validAddresses.map((a, i) => ({
+      const rows = await Promise.all(validAddresses.map(async (a, i) => {
+        let latitude = null
+        let longitude = null
+        try {
+          const full = `${a.street}, ${a.city}, ${a.state} ${a.zip}`
+          const res = await fetch('/api/geocode', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address: full }),
+          })
+          const geo = await res.json()
+          if (geo.latitude != null) { latitude = geo.latitude; longitude = geo.longitude }
+        } catch {}
+        return {
           provider_id: providerId,
           label: a.label || null,
           street: a.street || null,
@@ -241,8 +253,11 @@ export default function EditProfilePage() {
           zip: a.zip || null,
           visibility: 'full',
           is_primary: i === 0,
-        }))
-      )
+          latitude,
+          longitude,
+        }
+      }))
+      await supabase.from('provider_addresses').insert(rows)
     }
 
     setSaving(false)
@@ -264,7 +279,7 @@ export default function EditProfilePage() {
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 900, margin: '0 auto' }}>
-        <Link href="/"><img src="/logo.svg" alt="Tidal Care Network" style={{ height: 48, width: 'auto' }} /></Link>
+        <Link href="/"><img src="/tidal-care-network.svg" alt="Tidal Care Network" style={{ height: 180, width: 'auto' }} /></Link>
         <Link href="/dashboard" style={{ fontSize: 14, color: teal, textDecoration: 'none' }}>Cancel</Link>
       </header>
 

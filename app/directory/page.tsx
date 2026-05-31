@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import DirectoryClient from './DirectoryClient'
+import SignOutButton from '@/components/SignOutButton'
+import BrandLogo from '@/components/BrandLogo'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,6 +38,10 @@ export default async function DirectoryPage() {
     .from('ratings')
     .select('provider_id, stars')
     .in('provider_id', safeIds)
+    const { data: addresses } = await supabase
+    .from('provider_addresses')
+    .select('provider_id, label, latitude, longitude, visibility, is_primary')
+    .in('provider_id', safeIds)
 
   // Compute average rating per provider
   function avgFor(pid: string) {
@@ -47,6 +53,8 @@ export default async function DirectoryPage() {
 
   const providers = (rawProviders || []).map((p) => {
     const { avg, count } = avgFor(p.id)
+    const pAddrs = (addresses || []).filter((a) => a.provider_id === p.id)
+    const primary = pAddrs.find((a) => a.is_primary) || pAddrs[0] || null
     return {
       ...p,
       provider_categories: (cats || []).filter((c) => c.provider_id === p.id),
@@ -54,6 +62,10 @@ export default async function DirectoryPage() {
       is_endorsed: (endorsed || []).some((e) => e.provider_id === p.id),
       rating_avg: avg,
       rating_count: count,
+      map_lat: primary?.latitude ?? null,
+      map_lng: primary?.longitude ?? null,
+      map_label: primary?.label ?? null,
+      map_visibility: primary?.visibility ?? 'full',
     }
   })
 

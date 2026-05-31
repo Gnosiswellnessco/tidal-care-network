@@ -214,7 +214,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 900, margin: '0 auto' }}>
-        <Link href="/"><img src="/logo.svg" alt="Tidal Care Network" style={{ height: 48, width: 'auto' }} /></Link>
+        <Link href="/"><img src="/tidal-care-network.svg" alt="Tidal Care Network" style={{ height: 180, width: 'auto' }} /></Link>
         <Link href="/dashboard" style={{ fontSize: 14, color: teal, textDecoration: 'none' }}>← Dashboard</Link>
       </header>
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 40px 64px' }}>{children}</div>
