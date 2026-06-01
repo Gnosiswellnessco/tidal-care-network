@@ -5,6 +5,7 @@ import EndorsementRequest from '@/components/EndorsementRequest'
 import ReferralSources from '@/components/ReferralSources'
 import SignOutButton from '@/components/SignOutButton'
 import BrandLogo from '@/components/BrandLogo'
+import OrgManagement from '@/components/OrgManagement'
 import { getAdminInfo } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
@@ -20,7 +21,7 @@ export default async function DashboardPage() {
   // Check if this user already has a provider profile
   const { data: provider } = await supabase
     .from('providers')
-    .select('id, full_name, vetting_status')
+    .select('id, full_name, vetting_status, is_org')
     .eq('user_id', user.id)
     .maybeSingle()
 
@@ -69,6 +70,9 @@ export default async function DashboardPage() {
             </div>
             <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #eee' }}>
               <ReferralSources providerId={provider.id} />
+            </div>
+            <div style={{ marginTop: 32, paddingTop: 24, borderTop: '1px solid #eee' }}>
+              <OrgManagement providerId={provider.id} isOrg={!!provider.is_org} />
             </div>
            
           </div>

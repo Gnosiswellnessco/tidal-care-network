@@ -208,7 +208,6 @@ export default function JoinPage() {
         phone: phone || null,
         website: website || null,
         photo_url: photoUrl || null,
-        attested_at: new Date().toISOString(),
         vetting_status: 'pending',
         is_active: true,
         is_org: isOrgMode,
