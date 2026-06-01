@@ -8,6 +8,7 @@ import { RatingDisplay } from '@/components/RatingWidget'
 import DirectoryMap from '@/components/DirectoryMap'
 import SignOutButton from '@/components/SignOutButton'
 import BrandLogo from '@/components/BrandLogo'
+import { REGIONS, METROS_BY_REGION, regionForZip, type Region } from '@/lib/sc-regions'
 
 
 const teal = '#3e6a70'
@@ -20,7 +21,7 @@ function categoryLabel(key: string) {
 
 type Provider = {
   id: string; full_name: string; credentials: string | null; practice_name: string | null
-  primary_area: string | null; bio: string | null; photo_url: string | null; is_org: boolean
+  primary_area: string | null; primary_zip: string | null; bio: string | null; photo_url: string | null; is_org: boolean
   offers_telehealth: boolean; availability_status: string
   provider_categories: { category: string; is_primary: boolean }[]
   provider_tags: { tag_type: string; tag_value: string }[]
@@ -38,6 +39,8 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   const [agreed, setAgreed] = useState(true)
   const [category, setCategory] = useState('')
   const [specialty, setSpecialty] = useState('')
+  const [region, setRegion] = useState<Region | ''>('')
+  const [area, setArea] = useState('')
   const [teleOnly, setTeleOnly] = useState(false)
   const [acceptingOnly, setAcceptingOnly] = useState(false)
 
@@ -113,9 +116,14 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
       if (specialty && !p.provider_tags.some((t) => t.tag_value === specialty)) return false
       if (teleOnly && !p.offers_telehealth) return false
       if (acceptingOnly && p.availability_status !== 'accepting') return false
+      if (region) {
+        const r = regionForZip(p.primary_zip)
+        if (r.region !== region) return false
+        if (area && r.metro !== area) return false
+      }
       return true
     })
-  }, [providers, search, category, specialty, teleOnly, acceptingOnly])
+  }, [providers, search, category, specialty, teleOnly, acceptingOnly, region, area])
 
   function toggleSelect(p: Provider) {
     setSelected((cur) => cur.some((s) => s.id === p.id) ? cur.filter((s) => s.id !== p.id) : [...cur, p])
@@ -253,6 +261,14 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
             <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} disabled={!category} style={{ ...selectStyle, color: category ? '#1a1a1a' : '#aaa', opacity: category ? 1 : 0.6 }}>
               <option value="">{category ? 'All specialties' : 'Pick a category first'}</option>
               {specialtyOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={region} onChange={(e) => { setRegion(e.target.value as Region | ''); setArea('') }} style={selectStyle}>
+              <option value="">All regions</option>
+              {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <select value={area} onChange={(e) => setArea(e.target.value)} disabled={!region} style={{ ...selectStyle, color: region ? '#1a1a1a' : '#aaa', opacity: region ? 1 : 0.6 }}>
+              <option value="">{region ? 'All areas' : 'Pick a region first'}</option>
+              {region && METROS_BY_REGION[region as Region].map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 14, paddingTop: 14, borderTop: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
