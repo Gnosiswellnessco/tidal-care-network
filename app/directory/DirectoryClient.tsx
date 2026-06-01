@@ -8,6 +8,7 @@ import { RatingDisplay } from '@/components/RatingWidget'
 import DirectoryMap from '@/components/DirectoryMap'
 import SignOutButton from '@/components/SignOutButton'
 import BrandLogo from '@/components/BrandLogo'
+import QRCodeImage from '@/components/QRCode'
 import { REGIONS, METROS_BY_REGION, regionForZip, type Region } from '@/lib/sc-regions'
 
 
@@ -22,7 +23,7 @@ function categoryLabel(key: string) {
 type Provider = {
   id: string; full_name: string; credentials: string | null; practice_name: string | null
   primary_area: string | null; primary_zip: string | null; bio: string | null; photo_url: string | null; is_org: boolean
-  offers_telehealth: boolean; availability_status: string
+  offers_telehealth: boolean; availability_status: string; phone?: string | null; email?: string | null; website?: string | null
   provider_categories: { category: string; is_primary: boolean }[]
   provider_tags: { tag_type: string; tag_value: string }[]
   is_endorsed?: boolean
@@ -48,23 +49,16 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   const [trayOpen, setTrayOpen] = useState(false)
   const [step, setStep] = useState<'list' | 'done'>('list')
 
-  const [type, setType] = useState<'client' | 'provider'>('client')
-  const [clientName, setClientName] = useState('')
-  const [clientEmail, setClientEmail] = useState('')
   const [note, setNote] = useState('')
-  const [roi, setRoi] = useState(false)
-  const [notifyProvider, setNotifyProvider] = useState(true)
-  const [alsoNotifyClient, setAlsoNotifyClient] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [shareUrl, setShareUrl] = useState('')
-  const [emailNote, setEmailNote] = useState('')
+  const [copied, setCopied] = useState(false)
   const [myProviderId, setMyProviderId] = useState<string | null>(null)
   const [favorites, setFavorites] = useState<string[]>([])
   const [loggedIn, setLoggedIn] = useState(false)
   const [view, setView] = useState<'list' | 'map'>('list')
 
-  // Show terms gate if not previously acknowledged
   useState(() => {
     if (typeof window !== 'undefined') {
       const ok = window.localStorage.getItem('tcn_terms_agreed')
@@ -131,10 +125,10 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   }
   const isSelected = (id: string) => selected.some((s) => s.id === id)
 
-  async function handleSend() {
+  // Create an ANONYMOUS referral: no client name/email is ever stored.
+  async function handleCreate() {
     setError('')
     if (selected.length === 0) { setError('Select at least one provider.'); return }
-    if (type === 'client' && !clientName.trim()) { setError('Enter a client name or label.'); return }
     setSending(true)
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -144,20 +138,15 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
       const { data: me } = await supabase.from('providers').select('id').eq('user_id', user.id).maybeSingle()
       fromId = me?.id || null
     }
-    if (type === 'provider' && !fromId) { setError('You must be logged in as a provider for a warm handoff.'); setSending(false); return }
 
-    const token = type === 'client' ? crypto.randomUUID().replace(/-/g, '') : null
+    const token = crypto.randomUUID().replace(/-/g, '')
 
     const { data: referral, error: refErr } = await supabase
       .from('referrals')
       .insert({
         from_provider_id: fromId,
-        to_provider_id: type === 'provider' ? selected[0].id : null,
-        referral_type: type,
-        roi_requested: roi,
+        referral_type: 'client',
         note: note || null,
-        client_name: type === 'client' ? clientName : null,
-        client_email: (clientEmail || null),
         share_token: token,
         status: 'sent',
       }).select().single()
@@ -166,42 +155,22 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
 
     await supabase.from('referral_providers').insert(selected.map((p) => ({ referral_id: referral.id, provider_id: p.id })))
 
-    // Decide who to email
-    let wantClient = false
-    let wantProvider = false
-    if (type === 'client') {
-      wantClient = !!clientEmail
-    } else {
-      wantProvider = notifyProvider
-      wantClient = alsoNotifyClient && !!clientEmail
-    }
-
-    if (wantClient || wantProvider) {
-      try {
-        const res = await fetch('/api/send-referral', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ referralId: referral.id, notifyClient: wantClient, notifyProvider: wantProvider }),
-        })
-        const out = await res.json()
-        if (out.sent && out.sent.length > 0) {
-          setEmailNote(`Email sent to: ${out.sent.join(' and ')}.`)
-        } else if (out.error) {
-          setEmailNote('Referral saved, but email could not be sent.')
-        }
-      } catch {
-        setEmailNote('Referral saved, but email could not be sent.')
-      }
-    }
-
     setSending(false)
-    if (token) setShareUrl(`${window.location.origin}/r/${token}`)
+    setShareUrl(`${window.location.origin}/r/${token}`)
     setStep('done')
   }
 
-  function resetAll() {
-    setSelected([]); setStep('list'); setType('client'); setClientName(''); setClientEmail(''); setNote(''); setRoi(false); setNotifyProvider(true); setAlsoNotifyClient(false); setShareUrl(''); setError(''); setEmailNote(''); setTrayOpen(false)
+  function copyLink() {
+    navigator.clipboard.writeText(shareUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
+
+  function resetAll() {
+    setSelected([]); setStep('list'); setNote(''); setShareUrl(''); setError(''); setTrayOpen(false); setCopied(false)
+  }
+
+  const mailtoHref = `mailto:?subject=${encodeURIComponent('A referral from Tidal Care Network')}&body=${encodeURIComponent(`You've been referred to a provider through Tidal Care Network. View the details and contact information here:\n\n${shareUrl}\n\nThese are vetted members of the network.`)}`
 
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
@@ -215,7 +184,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
             </p>
             <div style={{ background: '#fbeef0', border: '1px solid #f3c9d0', borderRadius: 8, padding: 12, marginBottom: 16, textAlign: 'left' }}>
               <p style={{ fontSize: 13, color: '#7a2230', lineHeight: 1.6, margin: 0 }}>
-                <strong>In a crisis, this directory is not the right tool.</strong> If you or someone else is in danger, call <strong>911</strong>. For mental health or suicidal crisis, call or text <strong>988</strong> (Suicide & Crisis Lifeline), available 24/7, or visit your <strong>nearest emergency room</strong>.
+                <strong>In a crisis, this directory is not the right tool.</strong> If you or someone else is in danger, call <strong>911</strong>. For mental health or suicidal crisis, call or text <strong>988</strong> (Suicide &amp; Crisis Lifeline), available 24/7, or visit your <strong>nearest emergency room</strong>.
               </p>
             </div>
             <p style={{ fontSize: 13, color: '#777', marginBottom: 20, textAlign: 'left' }}>
@@ -365,27 +334,31 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
 
             {step !== 'done' && (
               <p style={{ fontSize: 12, color: '#888', marginBottom: 16, lineHeight: 1.5, background: mint, padding: '8px 12px', borderRadius: 8 }}>
-                Keep browsing and checking "Refer" on any provider to add them here. Tap "Hide" to slide this panel away while you browse.
+                Keep browsing and checking "Refer" on any provider to add them here. When you're ready, create a private referral link to share, show as a QR code, or print.
               </p>
             )}
 
             {step === 'done' ? (
               <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 24, textAlign: 'center' }}>
                 <div style={{ fontSize: 36, marginBottom: 8 }}>✓</div>
-                <h3 style={{ fontSize: 18, fontWeight: 700, color: dark, marginBottom: 8 }}>Referral created</h3>
-                {emailNote && <p style={{ fontSize: 13, color: '#27500a', background: '#eaf3de', padding: '8px 12px', borderRadius: 8, marginBottom: 12 }}>{emailNote}</p>}
-                {shareUrl ? (
-                  <>
-                    <p style={{ fontSize: 14, color: '#555', marginBottom: 16, lineHeight: 1.6 }}>Share this link with {clientName}:</p>
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                      <input readOnly value={shareUrl} style={{ flex: 1, padding: '9px 10px', fontSize: 12, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: '#faf9f5' }} />
-                      <button onClick={() => navigator.clipboard.writeText(shareUrl)} style={{ fontSize: 13, fontWeight: 500, padding: '9px 14px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: 'pointer' }}>Copy</button>
-                    </div>
-                  </>
-                ) : (
-                  <p style={{ fontSize: 14, color: '#555', marginBottom: 16, lineHeight: 1.6 }}>Your warm handoff to {selected[0].full_name} has been recorded.</p>
-                )}
-                <button onClick={resetAll} style={{ fontSize: 14, fontWeight: 500, padding: '10px 20px', borderRadius: 8, border: '1px solid #d4d2ca', background: 'white', color: dark, cursor: 'pointer' }}>Done</button>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: dark, marginBottom: 8 }}>Referral link ready</h3>
+                <p style={{ fontSize: 14, color: '#555', marginBottom: 16, lineHeight: 1.6 }}>Share this link, show the QR code for the person to scan, or print it. It contains no personal information about them.</p>
+
+                <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
+                  <QRCodeImage value={shareUrl} size={150} />
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                  <input readOnly value={shareUrl} style={{ flex: 1, padding: '9px 10px', fontSize: 12, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: '#faf9f5' }} />
+                  <button onClick={copyLink} style={{ fontSize: 13, fontWeight: 500, padding: '9px 14px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: 'pointer', whiteSpace: 'nowrap' }}>{copied ? 'Copied!' : 'Copy'}</button>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                  <a href={`/r/${shareUrl.split('/r/')[1]}/print`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, fontSize: 13, fontWeight: 500, padding: '9px 14px', borderRadius: 8, border: '1px solid ' + teal, background: 'white', color: teal, cursor: 'pointer', textDecoration: 'none' }}>Print</a>
+                  <a href={mailtoHref} style={{ flex: 1, fontSize: 13, fontWeight: 500, padding: '9px 14px', borderRadius: 8, border: '1px solid ' + teal, background: 'white', color: teal, cursor: 'pointer', textDecoration: 'none' }}>Email from my app</a>
+                </div>
+
+                <button onClick={resetAll} style={{ fontSize: 14, fontWeight: 500, padding: '10px 20px', borderRadius: 8, border: '1px solid #d4d2ca', background: 'white', color: dark, cursor: 'pointer', width: '100%' }}>Done</button>
               </div>
             ) : (
               <>
@@ -399,45 +372,18 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                 </div>
 
                 <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 20 }}>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                    <button onClick={() => setType('client')} style={{ flex: 1, fontSize: 13, fontWeight: 500, padding: '8px', borderRadius: 8, cursor: 'pointer', border: type === 'client' ? `2px solid ${teal}` : '1px solid #d4d2ca', background: type === 'client' ? mint : 'white', color: dark }}>Send to client</button>
-                    <button onClick={() => { if (selected.length > 1) { setError('Warm handoff is to one provider. Remove extras or use Send to client.'); return } setType('provider'); setError('') }} style={{ flex: 1, fontSize: 13, fontWeight: 500, padding: '8px', borderRadius: 8, cursor: 'pointer', border: type === 'provider' ? `2px solid ${teal}` : '1px solid #d4d2ca', background: type === 'provider' ? mint : 'white', color: dark }}>Warm handoff</button>
-                  </div>
-
-                  {type === 'client' && (
-                    <>
-                      <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client name or label" style={trayInp} />
-                      <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} type="email" placeholder="Client email (to send them the link)" style={trayInp} />
-                      <p style={{ fontSize: 11, color: '#888', marginTop: -6, marginBottom: 12, lineHeight: 1.5 }}>If you enter an email, we'll send the referral link to your client. Otherwise you'll get a link to share yourself.</p>
-                    </>
-                  )}
-
-                  {type === 'provider' && (
-                    <div style={{ marginBottom: 12, padding: 12, background: '#faf9f5', borderRadius: 8 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: dark, marginBottom: 8 }}>Who should be notified?</div>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: dark, cursor: 'pointer', marginBottom: 8 }}>
-                        <input type="checkbox" checked={notifyProvider} onChange={(e) => setNotifyProvider(e.target.checked)} /> Notify the receiving provider (includes your info)
-                      </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: dark, cursor: 'pointer' }}>
-                        <input type="checkbox" checked={alsoNotifyClient} onChange={(e) => setAlsoNotifyClient(e.target.checked)} /> Also email the client a copy
-                      </label>
-                      {alsoNotifyClient && (
-                        <>
-                          <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client name" style={{ ...trayInp, marginTop: 10, marginBottom: 8 }} />
-                          <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} type="email" placeholder="Client email" style={trayInp} />
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional). No detailed health info." style={{ ...trayInp, minHeight: 60, resize: 'vertical' }} />
-                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: dark, cursor: 'pointer', marginBottom: 16, lineHeight: 1.4 }}>
-                    <input type="checkbox" checked={roi} onChange={(e) => setRoi(e.target.checked)} style={{ marginTop: 2 }} /> Request a Release of Information (ROI) for providers to communicate
-                  </label>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: dark, marginBottom: 6 }}>Optional note</label>
+                  <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="A short, general note (optional)." style={{ ...trayInp, minHeight: 60, resize: 'vertical' }} />
+                  <p style={{ fontSize: 11, color: '#b3504f', marginTop: -6, marginBottom: 14, lineHeight: 1.5 }}>
+                    Please do <strong>not</strong> include any personal health information about the client in this note. It appears on the referral page and printout.
+                  </p>
                   {error && <p style={{ fontSize: 13, color: '#b91c1c', marginBottom: 12 }}>{error}</p>}
-                  <button onClick={handleSend} disabled={sending} style={{ width: '100%', fontSize: 14, fontWeight: 500, padding: '11px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: sending ? 'default' : 'pointer', opacity: sending ? 0.6 : 1 }}>
-                    {sending ? 'Sending…' : type === 'client' ? 'Create & send referral' : 'Send warm handoff'}
+                  <button onClick={handleCreate} disabled={sending} style={{ width: '100%', fontSize: 14, fontWeight: 500, padding: '11px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: sending ? 'default' : 'pointer', opacity: sending ? 0.6 : 1 }}>
+                    {sending ? 'Creating…' : 'Create referral link'}
                   </button>
+                  <p style={{ fontSize: 11, color: '#888', marginTop: 10, lineHeight: 1.5 }}>
+                    This creates a private link with no personal information about the person you&apos;re referring. You deliver it yourself — by sharing the link, showing the QR code, printing it, or emailing it from your own email app.
+                  </p>
                 </div>
               </>
             )}

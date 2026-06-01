@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { CATEGORIES } from '@/lib/taxonomy'
+import QRCodeImage from '@/components/QRCode'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,14 +40,12 @@ export default async function ClientReferralPage({ params }: { params: Promise<{
     .select('provider_id, category, is_primary')
     .in('provider_id', ids.length ? ids : ['00000000-0000-0000-0000-000000000000'])
 
-  // Attach categories and determine each provider's primary category for grouping
   const withCats = (providers || []).map((p) => {
     const pCats = (cats || []).filter((c) => c.provider_id === p.id)
     const primary = pCats.find((c) => c.is_primary)?.category || pCats[0]?.category || 'other'
     return { ...p, cats: pCats, groupKey: primary }
   })
 
-  // Group providers by their primary category, preserving taxonomy order
   const groups: { key: string; label: string; providers: typeof withCats }[] = []
   const orderedKeys = [...CATEGORIES.map((c) => c.key), 'other']
   for (const key of orderedKeys) {
@@ -56,6 +56,7 @@ export default async function ClientReferralPage({ params }: { params: Promise<{
   }
 
   const multiple = withCats.length > 1
+  const link = `https://tidalcare.org/r/${token}`
 
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
@@ -66,7 +67,7 @@ export default async function ClientReferralPage({ params }: { params: Promise<{
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '16px 40px 64px' }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <h1 style={{ fontSize: 26, fontWeight: 700, color: '#2c4d52', marginBottom: 8 }}>
-            {referral.client_name ? `${referral.client_name}, here ${multiple ? 'are' : 'is'} your referral${multiple ? 's' : ''}` : 'Your referral'}
+            {multiple ? 'Your referrals' : 'Your referral'}
           </h1>
           <p style={{ fontSize: 15, color: '#666', lineHeight: 1.6 }}>
             {multiple
@@ -78,6 +79,15 @@ export default async function ClientReferralPage({ params }: { params: Promise<{
               <strong>A note from your referring provider:</strong><br />{referral.note}
             </div>
           )}
+          <div style={{ marginTop: 20, display: 'flex', gap: 16, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ textAlign: 'center' }}>
+              <QRCodeImage value={link} size={120} />
+              <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>Scan to open on your phone</div>
+            </div>
+            <Link href={`/r/${token}/print`} style={{ fontSize: 14, fontWeight: 500, color: '#3e6a70', background: 'white', border: '1px solid #3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
+              Print this referral
+            </Link>
+          </div>
         </div>
 
         {groups.map((group) => (
