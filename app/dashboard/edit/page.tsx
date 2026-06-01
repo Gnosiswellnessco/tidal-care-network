@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORIES, TAGS, INSURANCE_OPTIONS, AGE_GROUPS, IDENTITY_TAGS } from '@/lib/taxonomy'
+import { CATEGORIES, INSURANCE_OPTIONS, AGE_GROUPS, IDENTITY_TAGS } from '@/lib/taxonomy'
+import { useMergedTags } from '@/hooks/useTaxonomy'
 import { CategoryIcon } from '@/components/CategoryIcon'
 
 const teal = '#3e6a70'
@@ -14,8 +15,11 @@ const mint = '#e8eff0'
 type Address = { label: string; street: string; city: string; state: string; zip: string }
 const emptyAddress = (): Address => ({ label: '', street: '', city: '', state: 'SC', zip: '' })
 
+type TagRequest = { category: string; section: string; tag: string }
+
 export default function EditProfilePage() {
   const router = useRouter()
+  const TAGS = useMergedTags()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -46,10 +50,14 @@ export default function EditProfilePage() {
   const [selectedIdentity, setSelectedIdentity] = useState<string[]>([])
   const [addresses, setAddresses] = useState<Address[]>([emptyAddress()])
 
+  // Tag requests (provider asking to add a new specialty tag)
+  const [tagRequests, setTagRequests] = useState<TagRequest[]>([])
+  const [reqOpenFor, setReqOpenFor] = useState<string | null>(null)
+  const [reqText, setReqText] = useState('')
+
   const isOrgMode = practiceType === 'group_owner' || practiceType === 'institution'
   const isTelehealthOnly = telehealth === 'Telehealth only'
 
-  // Map DB availability code -> dropdown label
   const availLabelFromCode: Record<string, string> = {
     accepting: 'Yes — accepting now',
     limited: 'Limited — contact to inquire',
@@ -86,7 +94,6 @@ export default function EditProfilePage() {
     setPhone(p.phone || '')
     setWebsite(p.website || '')
     setPhotoUrl(p.photo_url || '')
-    // telehealth: derive label from offers_telehealth (best-effort)
     setTelehealth(p.offers_telehealth ? 'Yes — telehealth available' : 'No — in-person only')
 
     const { data: cats } = await supabase.from('provider_categories').select('category').eq('provider_id', p.id)
@@ -116,6 +123,17 @@ export default function EditProfilePage() {
   }
   function addAddress() { setAddresses((cur) => [...cur, emptyAddress()]) }
   function removeAddress(i: number) { setAddresses((cur) => cur.filter((_, idx) => idx !== i)) }
+
+  function addTagRequest(category: string, section: string) {
+    const tag = reqText.trim()
+    if (!tag) return
+    setTagRequests((cur) => [...cur, { category, section, tag }])
+    setReqText('')
+    setReqOpenFor(null)
+  }
+  function removeTagRequest(idx: number) {
+    setTagRequests((cur) => cur.filter((_, i) => i !== idx))
+  }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -180,7 +198,6 @@ export default function EditProfilePage() {
     const availCode = availCodeFromLabel[availabilityStatus] || 'accepting'
     const offersTele = telehealth !== 'No — in-person only'
 
-    // Update the provider row (license_number intentionally NOT updated)
     const { error: upErr } = await supabase
       .from('providers')
       .update({
@@ -203,7 +220,6 @@ export default function EditProfilePage() {
 
     if (upErr) { setErrorMsg('Could not save: ' + upErr.message); setSaving(false); return }
 
-    // Replace linked rows: delete then insert
     await supabase.from('provider_categories').delete().eq('provider_id', providerId)
     if (selectedCats.length > 0) {
       await supabase.from('provider_categories').insert(
@@ -258,6 +274,19 @@ export default function EditProfilePage() {
         }
       }))
       await supabase.from('provider_addresses').insert(rows)
+    }
+
+    // Save any new tag requests (provider already exists, so insert directly)
+    if (tagRequests.length > 0) {
+      await supabase.from('tag_requests').insert(
+        tagRequests.map((r) => ({
+          provider_id: providerId,
+          category: r.category,
+          section: r.section,
+          requested_tag: r.tag,
+          status: 'pending',
+        }))
+      )
     }
 
     setSaving(false)
@@ -341,7 +370,7 @@ export default function EditProfilePage() {
 
         {step === 2 && (
           <Card>
-            <p style={hint}>Select at least one specialty. <span style={{ color: '#b3504f' }}>*</span></p>
+            <p style={hint}>Select at least one specialty. Don&apos;t see one you need? Use &quot;Request to add&quot; under any group — we&apos;ll review it. <span style={{ color: '#b3504f' }}>*</span></p>
             {selectedCats.length === 0 ? (
               <p style={hint}>Go back and select at least one category first.</p>
             ) : (
@@ -350,17 +379,36 @@ export default function EditProfilePage() {
                 return (
                   <div key={catKey} style={{ marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #eee' }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: dark, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}><CategoryIcon name={catKey} size={18} /> {cat?.label}</div>
-                    {TAGS[catKey]?.map((section) => (
-                      <div key={section.title} style={{ marginBottom: 12 }}>
-                        <div style={secLabel}>{section.title}</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          {section.options.map((opt) => {
-                            const on = selectedTags.includes(catKey + ':' + opt)
-                            return (<button key={opt} type="button" onClick={() => toggle(catKey + ':' + opt, selectedTags, setSelectedTags)} style={pill(on)}>{opt}</button>)
-                          })}
+                    {TAGS[catKey]?.map((section) => {
+                      const reqKey = catKey + '|||' + section.title
+                      const pendingForSection = tagRequests.filter((r) => r.category === catKey && r.section === section.title)
+                      return (
+                        <div key={section.title} style={{ marginBottom: 12 }}>
+                          <div style={secLabel}>{section.title}</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {section.options.map((opt) => {
+                              const on = selectedTags.includes(catKey + ':' + opt)
+                              return (<button key={opt} type="button" onClick={() => toggle(catKey + ':' + opt, selectedTags, setSelectedTags)} style={pill(on)}>{opt}</button>)
+                            })}
+                            {pendingForSection.map((r, idx) => (
+                              <span key={'req' + idx} style={{ fontSize: 12, padding: '4px 11px', borderRadius: 99, background: '#faeeda', color: '#633806', border: '1px solid #e8c98a', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                {r.tag} · pending
+                                <button type="button" onClick={() => removeTagRequest(tagRequests.indexOf(r))} style={{ background: 'none', border: 'none', color: '#633806', cursor: 'pointer', padding: 0, fontSize: 13, lineHeight: 1 }}>×</button>
+                              </span>
+                            ))}
+                          </div>
+                          {reqOpenFor === reqKey ? (
+                            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                              <input autoFocus value={reqText} onChange={(e) => setReqText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTagRequest(catKey, section.title) } }} placeholder="Name the specialty to request" style={{ ...inp, marginBottom: 0, fontSize: 13, padding: '7px 10px' }} />
+                              <button type="button" onClick={() => addTagRequest(catKey, section.title)} style={{ fontSize: 12, fontWeight: 500, padding: '7px 14px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add</button>
+                              <button type="button" onClick={() => { setReqOpenFor(null); setReqText('') }} style={{ fontSize: 12, padding: '7px 10px', borderRadius: 8, border: '1px solid #d4d2ca', background: 'white', color: '#888', cursor: 'pointer' }}>Cancel</button>
+                            </div>
+                          ) : (
+                            <button type="button" onClick={() => { setReqOpenFor(reqKey); setReqText('') }} style={{ fontSize: 12, color: teal, background: 'none', border: 'none', cursor: 'pointer', marginTop: 8, padding: 0 }}>+ Request to add</button>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )
               })

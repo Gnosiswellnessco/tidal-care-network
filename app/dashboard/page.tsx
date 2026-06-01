@@ -5,6 +5,7 @@ import EndorsementRequest from '@/components/EndorsementRequest'
 import ReferralSources from '@/components/ReferralSources'
 import SignOutButton from '@/components/SignOutButton'
 import BrandLogo from '@/components/BrandLogo'
+import { getAdminInfo } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,15 +24,20 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .maybeSingle()
 
+  const adminInfo = await getAdminInfo(user.email)
+
 
   return (
     <main style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#f7f6f2' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 900, margin: '0 auto' }}>
         <BrandLogo height={180} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-  <span style={{ fontSize: 14, color: '#666' }}>{user.email}</span>
-  <SignOutButton />
-</div>
+          {adminInfo.isAdmin && (
+            <Link href="/admin" style={{ fontSize: 13, fontWeight: 600, color: 'white', background: '#3e6a70', padding: '7px 14px', borderRadius: 8, textDecoration: 'none' }}>Admin</Link>
+          )}
+          <span style={{ fontSize: 14, color: '#666' }}>{user.email}</span>
+          <SignOutButton />
+        </div>
       </header>
 
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '24px 40px' }}>
