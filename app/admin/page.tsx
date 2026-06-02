@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { getAdminInfo, OWNER_EMAIL, type AdminRole } from '@/lib/admin-auth'
 import AdminRoleSelect from '@/components/AdminRoleSelect'
+import AdminProviderManager from '@/components/AdminProviderManager'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +30,38 @@ async function declineProvider(formData: FormData) {
   const id = formData.get('id') as string
   const admin = createAdminClient()
   await admin.from('providers').update({ vetting_status: 'removed', is_active: false }).eq('id', id)
+  revalidatePath('/admin')
+}
+
+async function bulkRemoveProviders(formData: FormData) {
+  'use server'
+  const ids = ((formData.get('ids') as string) || '').split(',').map((x) => x.trim()).filter(Boolean)
+  if (ids.length === 0) return
+  const admin = createAdminClient()
+  await admin.from('providers').update({ vetting_status: 'removed', is_active: false }).in('id', ids)
+  revalidatePath('/admin')
+}
+
+async function bulkReinstateProviders(formData: FormData) {
+  'use server'
+  const ids = ((formData.get('ids') as string) || '').split(',').map((x) => x.trim()).filter(Boolean)
+  if (ids.length === 0) return
+  const admin = createAdminClient()
+  await admin.from('providers').update({ vetting_status: 'approved', is_active: true }).in('id', ids)
+  revalidatePath('/admin')
+}
+
+async function bulkDeleteProviders(formData: FormData) {
+  'use server'
+  const ids = ((formData.get('ids') as string) || '').split(',').map((x) => x.trim()).filter(Boolean)
+  if (ids.length === 0) return
+  const admin = createAdminClient()
+  // Only an owner or super_admin should hard-delete; verify caller
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const me = await getAdminInfo(user?.email)
+  if (!me.isAdmin) return
+  await admin.from('providers').delete().in('id', ids)
   revalidatePath('/admin')
 }
 
@@ -417,21 +450,12 @@ export default async function AdminPage() {
         )}
 
         <h2 style={{ fontSize: 18, fontWeight: 600, color: '#2c4d52', marginBottom: 12 }}>All providers</h2>
-        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', overflow: 'hidden' }}>
-          {providers && providers.length > 0 ? providers.map((p, i) => (
-            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: i < providers.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
-              <div>
-                <span style={{ fontSize: 14, color: '#333' }}>{p.full_name}{p.credentials ? `, ${p.credentials}` : ''}</span>
-                {p.admin_override && <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: '#f7ece2', color: '#b3504f', marginLeft: 8 }}>override</span>}
-              </div>
-              <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 6, background: p.vetting_status === 'approved' ? '#eaf3de' : p.vetting_status === 'pending' ? '#faeeda' : '#fcebeb', color: p.vetting_status === 'approved' ? '#27500a' : p.vetting_status === 'pending' ? '#633806' : '#791f1f' }}>
-                {p.vetting_status}
-              </span>
-            </div>
-          )) : (
-            <p style={{ fontSize: 14, color: '#888', padding: 20 }}>No providers yet.</p>
-          )}
-        </div>
+        <AdminProviderManager
+          providers={(providers || []).map((p) => ({ id: p.id, full_name: p.full_name, credentials: p.credentials, practice_name: p.practice_name, email: p.email, vetting_status: p.vetting_status, admin_override: p.admin_override }))}
+          removeAction={bulkRemoveProviders}
+          deleteAction={bulkDeleteProviders}
+          reinstateAction={bulkReinstateProviders}
+        />
       </div>
     </main>
   )
