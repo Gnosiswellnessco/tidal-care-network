@@ -77,9 +77,13 @@ export default function JoinPage() {
   const [inviteOrgName, setInviteOrgName] = useState('')
   const [inviteOrgEmail, setInviteOrgEmail] = useState('')
   const [attestations, setAttestations] = useState<string[]>([])
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [endorserName, setEndorserName] = useState('')
+  const [endorserEmail, setEndorserEmail] = useState('')
 
   const isOrgMode = practiceType === 'group_owner' || practiceType === 'institution'
   const isTelehealthOnly = telehealth === 'Telehealth only'
+  const needsEndorsement = !isOrgMode && credentialType !== '' && credentialType !== 'State license'
 
   useEffect(() => {
     const supabase = createClient()
@@ -184,6 +188,8 @@ export default function JoinPage() {
       if (!credentialType) return 'Please select your credential type.'
       if (credentialType === 'State license' && !licenseNumber.trim()) return 'Please enter your license number.'
       if (credFiles.length === 0) return 'Please upload at least one license or certification document.'
+      if (needsEndorsement && !endorserName.trim()) return "Please enter your endorsing colleague's name."
+      if (needsEndorsement && !endorserEmail.trim()) return "Please enter your endorsing colleague's email."
     }
     if (s === 1) {
       if (selectedCats.length === 0) return 'Please select at least one category.'
@@ -221,6 +227,11 @@ export default function JoinPage() {
     }
     if (attestations.length < ATTESTATIONS.length) {
       setErrorMsg('Please confirm all provider attestations before submitting.')
+      setStep(5)
+      return
+    }
+    if (!agreedToTerms) {
+      setErrorMsg('Please read and agree to the Provider Terms of Participation and the Ethics Agreement before submitting.')
       setStep(5)
       return
     }
@@ -290,6 +301,27 @@ export default function JoinPage() {
       await supabase.from('provider_credentials').insert(
         credFiles.map((f) => ({ provider_id: provider.id, file_path: f.filePath, file_name: f.fileName, kind: f.kind }))
       )
+    }
+
+    // Cert-only providers: create an endorsement request and email the colleague
+    if (needsEndorsement && endorserName.trim() && endorserEmail.trim()) {
+      const confirmToken = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const { data: endo } = await supabase.from('endorsements').insert({
+        provider_id: provider.id,
+        endorser_name: endorserName.trim(),
+        endorser_email: endorserEmail.trim(),
+        status: 'pending',
+        confirm_token: confirmToken,
+      }).select().single()
+      if (endo) {
+        try {
+          await fetch('/api/request-endorsement', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ endorsementId: endo.id }),
+          })
+        } catch {}
+      }
     }
 
     if (selectedTags.length > 0) {
@@ -460,6 +492,17 @@ export default function JoinPage() {
                 </div>
               )}
             </div>
+
+            {needsEndorsement && (
+              <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid #eee' }}>
+                <div style={{ padding: 14, background: '#faeeda', borderRadius: 8, border: '1px solid #e8c98a', marginBottom: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#633806', marginBottom: 4 }}>One colleague endorsement is required</div>
+                  <p style={{ fontSize: 12, color: '#633806', lineHeight: 1.5, margin: 0 }}>Because you&apos;re joining with a certification or registration rather than a state license, your application needs one confirmed endorsement from a professional colleague before it can be approved. Enter their details below and we&apos;ll email them an endorsement request when you submit.</p>
+                </div>
+                <Field label="Endorsing colleague's name" required><input style={inp} value={endorserName} onChange={(e) => setEndorserName(e.target.value)} placeholder="Their full name" /></Field>
+                <Field label="Endorsing colleague's email" required><input style={inp} type="email" value={endorserEmail} onChange={(e) => setEndorserEmail(e.target.value)} placeholder="colleague@example.com" /></Field>
+              </div>
+            )}
 
             {!isOrgMode && (
               <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid #eee' }}>
@@ -699,6 +742,13 @@ export default function JoinPage() {
                   </label>
                 )
               })}
+            </div>
+
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid #eee' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, color: '#444', cursor: 'pointer', lineHeight: 1.5 }}>
+                <input type="checkbox" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} style={{ marginTop: 3, flexShrink: 0 }} />
+                <span>I have read and agree to the <a href="/terms-of-participation" target="_blank" rel="noopener noreferrer" style={{ color: teal }}>Provider Terms of Participation</a> and the <a href="/ethics" target="_blank" rel="noopener noreferrer" style={{ color: teal }}>Ethics Agreement</a>. <span style={{ color: '#b3504f' }}>*</span></span>
+              </label>
             </div>
           </Card>
         )}
