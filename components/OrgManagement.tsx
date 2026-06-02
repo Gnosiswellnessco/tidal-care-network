@@ -57,7 +57,7 @@ export default function OrgManagement({ providerId, isOrg }: { providerId: strin
       .select('id, full_name, practice_name, credentials, email, is_org')
       .eq('vetting_status', 'approved').eq('is_active', true)
       .neq('id', providerId)
-      .ilike('full_name', `%${search.trim()}%`)
+      .or(`full_name.ilike.%${search.trim()}%,practice_name.ilike.%${search.trim()}%`)
     q = isOrg ? q.eq('is_org', false) : q.eq('is_org', true)
     const { data, error } = await q.limit(8)
     if (error) { console.error('Org search error:', JSON.stringify(error)); setMsg('Search error: ' + error.message) }
