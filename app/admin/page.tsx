@@ -16,6 +16,14 @@ async function approveProvider(formData: FormData) {
   revalidatePath('/admin')
 }
 
+async function approveWithOverride(formData: FormData) {
+  'use server'
+  const id = formData.get('id') as string
+  const admin = createAdminClient()
+  await admin.from('providers').update({ vetting_status: 'approved', admin_override: true }).eq('id', id)
+  revalidatePath('/admin')
+}
+
 async function declineProvider(formData: FormData) {
   'use server'
   const id = formData.get('id') as string
@@ -53,7 +61,6 @@ async function declineTagRequest(formData: FormData) {
 
 async function addAdmin(formData: FormData) {
   'use server'
-  // Verify the caller is allowed to manage admins
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   const me = await getAdminInfo(user?.email)
@@ -62,7 +69,6 @@ async function addAdmin(formData: FormData) {
   const email = ((formData.get('email') as string) || '').trim().toLowerCase()
   const role = (formData.get('role') as string) || 'admin'
   if (!email) return
-  // Only an owner can mint another owner; super_admins can add admin/super_admin
   const safeRole: AdminRole = role === 'owner' && !me.isOwner ? 'super_admin' : (role as AdminRole)
 
   const admin = createAdminClient()
@@ -82,11 +88,9 @@ async function removeAdmin(formData: FormData) {
 
   const email = ((formData.get('email') as string) || '').trim().toLowerCase()
   if (!email) return
-  // Never allow removing the permanent owner
   if (email === OWNER_EMAIL.toLowerCase()) return
 
   const admin = createAdminClient()
-  // Only an owner can remove another owner
   const { data: target } = await admin.from('admins').select('role').eq('email', email).maybeSingle()
   if (target?.role === 'owner' && !me.isOwner) return
 
@@ -104,11 +108,9 @@ async function changeAdminRole(formData: FormData) {
   const email = ((formData.get('email') as string) || '').trim().toLowerCase()
   const role = (formData.get('role') as string) || 'admin'
   if (!email) return
-  // The permanent owner's role can't be changed
   if (email === OWNER_EMAIL.toLowerCase()) return
 
   const admin = createAdminClient()
-  // Only an owner can grant owner, or change someone who is currently an owner
   const { data: target } = await admin.from('admins').select('role').eq('email', email).maybeSingle()
   if (target?.role === 'owner' && !me.isOwner) return
   const safeRole: AdminRole = role === 'owner' && !me.isOwner ? 'super_admin' : (role as AdminRole)
@@ -116,6 +118,9 @@ async function changeAdminRole(formData: FormData) {
   await admin.from('admins').update({ role: safeRole }).eq('email', email)
   revalidatePath('/admin')
 }
+
+type CredFile = { file_name: string | null; signedUrl: string | null; kind: string }
+type EndoInfo = { hasConfirmed: boolean; pendingCount: number; endorserEmail: string | null }
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -136,6 +141,44 @@ export default async function AdminPage() {
   const approved = providers?.filter((p) => p.vetting_status === 'approved') || []
   const total = providers?.length || 0
 
+  // --- Vetting data for pending applicants: credential files (signed) + endorsement status ---
+  const pendingIds = pending.map((p) => p.id)
+  const credsByProvider = new Map<string, CredFile[]>()
+  const endoByProvider = new Map<string, EndoInfo>()
+
+  if (pendingIds.length > 0) {
+    const { data: creds } = await admin
+      .from('provider_credentials')
+      .select('provider_id, file_path, file_name, kind')
+      .in('provider_id', pendingIds)
+
+    for (const c of creds || []) {
+      let signedUrl: string | null = null
+      try {
+        const { data: signed } = await admin.storage
+          .from('provider-credentials')
+          .createSignedUrl(c.file_path, 600) // valid 10 minutes
+        signedUrl = signed?.signedUrl || null
+      } catch {}
+      const arr = credsByProvider.get(c.provider_id) || []
+      arr.push({ file_name: c.file_name, signedUrl, kind: c.kind })
+      credsByProvider.set(c.provider_id, arr)
+    }
+
+    const { data: endos } = await admin
+      .from('endorsements')
+      .select('provider_id, status, endorser_email')
+      .in('provider_id', pendingIds)
+
+    for (const e of endos || []) {
+      const cur = endoByProvider.get(e.provider_id) || { hasConfirmed: false, pendingCount: 0, endorserEmail: null }
+      if (e.status === 'confirmed') cur.hasConfirmed = true
+      else cur.pendingCount += 1
+      if (!cur.endorserEmail) cur.endorserEmail = e.endorser_email
+      endoByProvider.set(e.provider_id, cur)
+    }
+  }
+
   const { data: tagReqs } = await admin
     .from('tag_requests')
     .select('*')
@@ -144,12 +187,10 @@ export default async function AdminPage() {
 
   const providerNameById = new Map((providers || []).map((p) => [p.id, p.full_name]))
 
-  // Admins list (only needed if the viewer can manage admins)
   let adminsList: { email: string; role: string; added_by: string | null }[] = []
   if (me.canManageAdmins) {
     const { data: rows } = await admin.from('admins').select('email, role, added_by').order('created_at', { ascending: true })
     adminsList = rows || []
-    // Ensure the permanent owner always appears even if not seeded
     if (!adminsList.some((a) => a.email.toLowerCase() === OWNER_EMAIL.toLowerCase())) {
       adminsList = [{ email: OWNER_EMAIL, role: 'owner', added_by: 'system' }, ...adminsList]
     }
@@ -160,6 +201,14 @@ export default async function AdminPage() {
     owner: { bg: '#e8eff0', fg: '#2c4d52' },
     super_admin: { bg: '#eef0e0', fg: '#4a5520' },
     admin: { bg: '#f0eef9', fg: '#473b6b' },
+  }
+
+  const npiLabel: Record<string, { text: string; bg: string; fg: string }> = {
+    match: { text: 'NPI verified', bg: '#eaf3de', fg: '#27500a' },
+    found: { text: 'NPI found · name mismatch', bg: '#faeeda', fg: '#633806' },
+    not_found: { text: 'NPI not found', bg: '#fcebeb', fg: '#791f1f' },
+    invalid: { text: 'NPI invalid', bg: '#fcebeb', fg: '#791f1f' },
+    error: { text: 'NPI check failed', bg: '#f0eded', fg: '#666' },
   }
 
   return (
@@ -184,34 +233,104 @@ export default async function AdminPage() {
           <p style={{ fontSize: 14, color: '#888', marginBottom: 32 }}>No pending applications right now.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
-            {pending.map((p) => (
-              <div key={p.id} style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: 240 }}>
-                    <div style={{ fontSize: 16, fontWeight: 600, color: '#2c4d52' }}>
-                      {p.full_name}{p.credentials ? `, ${p.credentials}` : ''}
-                      {p.is_org && <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 6, background: '#e8eff0', color: '#2c4d52', marginLeft: 8 }}>Organization</span>}
+            {pending.map((p) => {
+              const isLicensed = p.credential_type === 'State license'
+              const endo = endoByProvider.get(p.id)
+              const hasConfirmedEndo = endo?.hasConfirmed || false
+              // Cert-holders need a confirmed endorsement before normal approval
+              const endorsementRequired = !p.is_org && !isLicensed
+              const canApproveNormally = !endorsementRequired || hasConfirmedEndo
+              const files = credsByProvider.get(p.id) || []
+              const npi = p.npi_verified_status ? npiLabel[p.npi_verified_status] : null
+              return (
+                <div key={p.id} style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 240 }}>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: '#2c4d52' }}>
+                        {p.full_name}{p.credentials ? `, ${p.credentials}` : ''}
+                        {p.is_org && <span style={{ fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 6, background: '#e8eff0', color: '#2c4d52', marginLeft: 8 }}>Organization</span>}
+                      </div>
+                      <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>{p.email}{p.phone ? ` · ${p.phone}` : ''}</div>
+                      <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
+                        {p.practice_name ? `${p.practice_name} · ` : ''}{p.practice_type || '—'}{p.primary_zip ? ` · ${p.primary_zip}` : ''}
+                      </div>
+
+                      {/* Credential summary */}
+                      <div style={{ marginTop: 10, padding: 12, background: '#faf9f5', borderRadius: 8, border: '1px solid #eee' }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Credentials</div>
+                        <div style={{ fontSize: 13, color: '#444' }}>
+                          Type: <strong>{p.credential_type || '—'}</strong>
+                          {p.license_number ? ` · No. ${p.license_number}` : ''}
+                          {p.issuing_body ? ` · ${p.issuing_body}` : ''}
+                        </div>
+                        {p.npi_number && (
+                          <div style={{ fontSize: 13, color: '#444', marginTop: 4, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            NPI: {p.npi_number}
+                            {npi && <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: npi.bg, color: npi.fg }}>{npi.text}</span>}
+                            {p.npi_registry_name && <span style={{ fontSize: 12, color: '#888' }}>({p.npi_registry_name})</span>}
+                          </div>
+                        )}
+
+                        {/* Uploaded files */}
+                        <div style={{ marginTop: 8 }}>
+                          {files.length === 0 ? (
+                            <span style={{ fontSize: 12, color: '#b3504f' }}>No credential files uploaded.</span>
+                          ) : (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                              {files.map((f, i) => (
+                                f.signedUrl ? (
+                                  <a key={i} href={f.signedUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 500, padding: '5px 11px', borderRadius: 8, background: '#e8eff0', color: '#2c4d52', textDecoration: 'none' }}>
+                                    📄 {f.file_name || 'file'} · {f.kind === 'license' ? 'License' : 'Cert'}
+                                  </a>
+                                ) : (
+                                  <span key={i} style={{ fontSize: 12, color: '#888' }}>{f.file_name || 'file'} (link unavailable)</span>
+                                )
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Endorsement status (cert-holders) */}
+                        {endorsementRequired && (
+                          <div style={{ marginTop: 8, fontSize: 13 }}>
+                            {hasConfirmedEndo ? (
+                              <span style={{ fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: '#eaf3de', color: '#27500a', fontSize: 11 }}>✓ Endorsement confirmed</span>
+                            ) : endo && endo.pendingCount > 0 ? (
+                              <span style={{ color: '#633806' }}>⏳ Endorsement requested{endo.endorserEmail ? ` (${endo.endorserEmail})` : ''} — awaiting confirmation</span>
+                            ) : (
+                              <span style={{ color: '#b3504f' }}>No endorsement on file</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {p.bio && <p style={{ fontSize: 13, color: '#555', marginTop: 8, lineHeight: 1.5 }}>{p.bio}</p>}
                     </div>
-                    <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>{p.email}{p.phone ? ` · ${p.phone}` : ''}</div>
-                    <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>
-                      {p.practice_name ? `${p.practice_name} · ` : ''}{p.practice_type || '—'}{p.primary_zip ? ` · ${p.primary_zip}` : ''}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 180 }}>
+                      {canApproveNormally ? (
+                        <form action={approveProvider}>
+                          <input type="hidden" name="id" value={p.id} />
+                          <button type="submit" style={{ fontSize: 13, fontWeight: 500, padding: '8px 18px', borderRadius: 8, border: 'none', background: '#3e6a70', color: 'white', cursor: 'pointer', width: '100%' }}>Approve</button>
+                        </form>
+                      ) : (
+                        <>
+                          <button type="button" disabled title="A confirmed colleague endorsement is required before approval." style={{ fontSize: 13, fontWeight: 500, padding: '8px 18px', borderRadius: 8, border: 'none', background: '#cfd8d9', color: '#fff', cursor: 'not-allowed', width: '100%' }}>Approve (endorsement needed)</button>
+                          <form action={approveWithOverride}>
+                            <input type="hidden" name="id" value={p.id} />
+                            <button type="submit" style={{ fontSize: 12, fontWeight: 500, padding: '7px 18px', borderRadius: 8, border: '1px solid #b3504f', background: 'white', color: '#b3504f', cursor: 'pointer', width: '100%' }}>Override &amp; approve</button>
+                          </form>
+                        </>
+                      )}
+                      <form action={declineProvider}>
+                        <input type="hidden" name="id" value={p.id} />
+                        <button type="submit" style={{ fontSize: 13, padding: '8px 18px', borderRadius: 8, border: '1px solid #d4d2ca', background: 'white', color: '#991b1b', cursor: 'pointer', width: '100%' }}>Decline</button>
+                      </form>
                     </div>
-                    {p.license_number && <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>License: {p.license_number}{p.issuing_body ? ` (${p.issuing_body})` : ''}</div>}
-                    {p.bio && <p style={{ fontSize: 13, color: '#555', marginTop: 8, lineHeight: 1.5 }}>{p.bio}</p>}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <form action={approveProvider}>
-                      <input type="hidden" name="id" value={p.id} />
-                      <button type="submit" style={{ fontSize: 13, fontWeight: 500, padding: '8px 18px', borderRadius: 8, border: 'none', background: '#3e6a70', color: 'white', cursor: 'pointer', width: '100%' }}>Approve</button>
-                    </form>
-                    <form action={declineProvider}>
-                      <input type="hidden" name="id" value={p.id} />
-                      <button type="submit" style={{ fontSize: 13, padding: '8px 18px', borderRadius: 8, border: '1px solid #d4d2ca', background: 'white', color: '#991b1b', cursor: 'pointer', width: '100%' }}>Decline</button>
-                    </form>
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 
@@ -303,6 +422,7 @@ export default async function AdminPage() {
             <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: i < providers.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
               <div>
                 <span style={{ fontSize: 14, color: '#333' }}>{p.full_name}{p.credentials ? `, ${p.credentials}` : ''}</span>
+                {p.admin_override && <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: '#f7ece2', color: '#b3504f', marginLeft: 8 }}>override</span>}
               </div>
               <span style={{ fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 6, background: p.vetting_status === 'approved' ? '#eaf3de' : p.vetting_status === 'pending' ? '#faeeda' : '#fcebeb', color: p.vetting_status === 'approved' ? '#27500a' : p.vetting_status === 'pending' ? '#633806' : '#791f1f' }}>
                 {p.vetting_status}
