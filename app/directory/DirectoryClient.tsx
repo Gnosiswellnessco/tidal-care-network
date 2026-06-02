@@ -275,6 +275,18 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
         <h1 style={{ fontSize: 30, fontWeight: 700, color: dark, marginBottom: 8 }}>Provider directory</h1>
         <p style={{ fontSize: 16, color: '#666' }}>{filtered.length} of {providers.length} provider{providers.length === 1 ? '' : 's'} · check providers to build a referral</p>
       </section>
+      <section style={{ maxWidth: 1000, margin: '0 auto', padding: '8px 40px 0' }}>
+        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: '20px 24px', fontSize: 13, color: '#777', lineHeight: 1.7 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>How to use this directory</div>
+          <p style={{ margin: '0 0 8px' }}>
+            Browse or filter providers by category, specialty, population, insurance, region, telehealth, and whether they&apos;re accepting new clients. Open any provider&apos;s profile to see their full details and contact information. To build a referral, check &quot;Refer&quot; on one or more providers, then create a private link you can share, show as a QR code, or print.
+          </p>
+          <p style={{ margin: 0 }}>
+            Tidal Care Network is a directory only — providers are independent professionals, and a listing is not a guarantee or endorsement of care. In an emergency call <strong>911</strong>, or call/text <strong>988</strong> for mental health crisis support. By using this directory you agree to our <Link href="/terms" style={{ color: teal }}>Terms of Use</Link>.
+          </p>
+        </div>
+      </section>
+
 
       <section style={{ maxWidth: 1000, margin: '0 auto', padding: '8px 40px 16px' }}>
         <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 16 }}>
@@ -476,18 +488,6 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
             )})}
           </div>
         )}
-      </section>
-
-      <section style={{ maxWidth: 1000, margin: '0 auto', padding: '0 40px 80px' }}>
-        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: '20px 24px', fontSize: 13, color: '#777', lineHeight: 1.7 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>How to use this directory</div>
-          <p style={{ margin: '0 0 8px' }}>
-            Browse or filter providers by category, specialty, population, insurance, region, telehealth, and whether they&apos;re accepting new clients. Open any provider&apos;s profile to see their full details and contact information. To build a referral, check &quot;Refer&quot; on one or more providers, then create a private link you can share, show as a QR code, or print.
-          </p>
-          <p style={{ margin: 0 }}>
-            Tidal Care Network is a directory only — providers are independent professionals, and a listing is not a guarantee or endorsement of care. In an emergency call <strong>911</strong>, or call/text <strong>988</strong> for mental health crisis support. By using this directory you agree to our <Link href="/terms" style={{ color: teal }}>Terms of Use</Link>.
-          </p>
-        </div>
       </section>
 
       {selected.length > 0 && (
