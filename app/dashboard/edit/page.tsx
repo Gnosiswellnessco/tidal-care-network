@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORIES, INSURANCE_OPTIONS, AGE_GROUPS, IDENTITY_TAGS } from '@/lib/taxonomy'
+import { CATEGORIES, INSURANCE_OPTIONS, AGE_GROUPS, POPULATIONS } from '@/lib/taxonomy'
 import { useMergedTags } from '@/hooks/useTaxonomy'
 import { CategoryIcon } from '@/components/CategoryIcon'
 
@@ -47,7 +47,7 @@ export default function EditProfilePage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedInsurance, setSelectedInsurance] = useState<string[]>([])
   const [selectedAges, setSelectedAges] = useState<string[]>([])
-  const [selectedIdentity, setSelectedIdentity] = useState<string[]>([])
+  const [selectedPopulations, setSelectedPopulations] = useState<string[]>([])
   const [addresses, setAddresses] = useState<Address[]>([emptyAddress()])
 
   // Tag requests (provider asking to add a new specialty tag)
@@ -104,6 +104,9 @@ export default function EditProfilePage() {
 
     const { data: ins } = await supabase.from('provider_insurance').select('insurance').eq('provider_id', p.id)
     setSelectedInsurance((ins || []).map((i) => i.insurance))
+
+    const { data: popsData } = await supabase.from('provider_populations').select('population').eq('provider_id', p.id)
+    setSelectedPopulations((popsData || []).map((pp) => pp.population))
 
     const { data: addrs } = await supabase.from('provider_addresses').select('label, street, city, state, zip').eq('provider_id', p.id).order('is_primary', { ascending: false })
     if (addrs && addrs.length > 0) {
@@ -244,6 +247,13 @@ export default function EditProfilePage() {
       )
     }
 
+    await supabase.from('provider_populations').delete().eq('provider_id', providerId)
+    if (selectedPopulations.length > 0) {
+      await supabase.from('provider_populations').insert(
+        selectedPopulations.map((pop) => ({ provider_id: providerId, population: pop }))
+      )
+    }
+
     await supabase.from('provider_addresses').delete().eq('provider_id', providerId)
     const validAddresses = addresses.filter((a) => a.street.trim() || a.city.trim() || a.zip.trim())
     if (validAddresses.length > 0) {
@@ -295,7 +305,7 @@ export default function EditProfilePage() {
 
   const steps = isOrgMode
     ? ['Org info', 'Care offered', 'Specialties', 'Access & locations', 'Communities served', 'Org profile']
-    : ['Practice info', 'Categories', 'Specialties', 'Access & location', 'Identity & culture', 'Profile & contact']
+    : ['Practice info', 'Categories', 'Specialties', 'Access & location', 'Communities served', 'Profile & contact']
 
   if (loading) {
     return (
@@ -480,9 +490,9 @@ export default function EditProfilePage() {
 
         {step === 4 && (
           <Card>
-            <p style={hint}>Select what genuinely reflects your training, experience, or demonstrated practice.</p>
+            <p style={hint}>{isOrgMode ? 'Select the communities your organization has specific experience and competence serving.' : 'Select the communities you have specific experience and competence serving. This helps people find providers who understand their background and lived experience.'}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {IDENTITY_TAGS.map((opt) => (<button key={opt} type="button" onClick={() => toggle(opt, selectedIdentity, setSelectedIdentity)} style={pill(selectedIdentity.includes(opt))}>{opt}</button>))}
+              {POPULATIONS.map((opt) => (<button key={opt} type="button" onClick={() => toggle(opt, selectedPopulations, setSelectedPopulations)} style={pill(selectedPopulations.includes(opt))}>{opt}</button>))}
             </div>
           </Card>
         )}

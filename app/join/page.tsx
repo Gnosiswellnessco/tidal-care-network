@@ -4,10 +4,9 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORIES, INSURANCE_OPTIONS, AGE_GROUPS, IDENTITY_TAGS, POPULATIONS } from '@/lib/taxonomy'
+import { CATEGORIES, INSURANCE_OPTIONS, AGE_GROUPS, POPULATIONS } from '@/lib/taxonomy'
 import { useMergedTags } from '@/hooks/useTaxonomy'
 import { CategoryIcon } from '@/components/CategoryIcon'
-import { CATEGORIES, INSURANCE_OPTIONS, AGE_GROUPS, IDENTITY_TAGS, POPULATIONS } from '@/lib/taxonomy'
 
 const teal = '#3e6a70'
 const dark = '#2c4d52'
@@ -57,7 +56,6 @@ export default function JoinPage() {
   const [selectedInsurance, setSelectedInsurance] = useState<string[]>([])
   const [selectedAges, setSelectedAges] = useState<string[]>([])
   const [selectedPopulations, setSelectedPopulations] = useState<string[]>([])
-  const [selectedIdentity, setSelectedIdentity] = useState<string[]>([])
   const [addresses, setAddresses] = useState<Address[]>([emptyAddress()])
 
   // Tag requests collected during the form, saved after provider is created
@@ -242,11 +240,11 @@ export default function JoinPage() {
       await supabase.from('provider_insurance').insert(
         selectedInsurance.map((ins) => ({ provider_id: provider.id, insurance: ins }))
       )
-      if (selectedPopulations.length > 0) {
+    }
+    if (selectedPopulations.length > 0) {
       await supabase.from('provider_populations').insert(
         selectedPopulations.map((pop) => ({ provider_id: provider.id, population: pop }))
       )
-    }
     }
 
     // Save any requested tags as pending tag_requests
@@ -303,7 +301,7 @@ export default function JoinPage() {
 
   const steps = isOrgMode
     ? ['Org info', 'Care offered', 'Specialties', 'Access & locations', 'Communities served', 'Org profile']
-    : ['Practice info', 'Categories', 'Specialties', 'Access & location', 'Identity & culture', 'Profile & contact']
+    : ['Practice info', 'Categories', 'Specialties', 'Access & location', 'Communities served', 'Profile & contact']
 
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
@@ -350,7 +348,7 @@ export default function JoinPage() {
             {!isOrgMode && (
               <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid #eee' }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: dark, marginBottom: 4 }}>Are you part of an organization on Tidal Care Network?</div>
-                <p style={{ fontSize: 12, color: '#888', marginBottom: 10, lineHeight: 1.5 }}>Search for your organization below. They'll receive a request to confirm your affiliation. If they're not on the network yet, you can invite them.</p>
+                <p style={{ fontSize: 12, color: '#888', marginBottom: 10, lineHeight: 1.5 }}>Search for your organization below. They&apos;ll receive a request to confirm your affiliation. If they&apos;re not on the network yet, you can invite them.</p>
                 {selectedOrg ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: mint, borderRadius: 8 }}>
                     <span style={{ fontSize: 13, color: dark, fontWeight: 500 }}>{selectedOrg.practice_name || selectedOrg.full_name}</span>
@@ -375,13 +373,13 @@ export default function JoinPage() {
                       </div>
                     )}
                     {!orgSearch.trim() && !orgNotListed && (
-                      <button type="button" onClick={() => setOrgNotListed(true)} style={{ fontSize: 12, color: teal, background: 'none', border: 'none', cursor: 'pointer', marginTop: 8, padding: 0 }}>My organization isn't on Tidal Care Network yet →</button>
+                      <button type="button" onClick={() => setOrgNotListed(true)} style={{ fontSize: 12, color: teal, background: 'none', border: 'none', cursor: 'pointer', marginTop: 8, padding: 0 }}>My organization isn&apos;t on Tidal Care Network yet →</button>
                     )}
                   </>
                 )}
                 {orgNotListed && !selectedOrg && (
                   <div style={{ marginTop: 12, padding: 14, background: '#faf9f5', borderRadius: 8, border: '1px solid #eee' }}>
-                    <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>We'll send an invitation for your organization to join. Your affiliation will show once they register and confirm.</div>
+                    <div style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>We&apos;ll send an invitation for your organization to join. Your affiliation will show once they register and confirm.</div>
                     <Field label="Organization name"><input style={inp} value={inviteOrgName} onChange={(e) => setInviteOrgName(e.target.value)} placeholder="Organization name" /></Field>
                     <Field label="Organization contact email"><input style={inp} type="email" value={inviteOrgEmail} onChange={(e) => setInviteOrgEmail(e.target.value)} placeholder="someone@theirorg.com" /></Field>
                     <button type="button" onClick={() => { setOrgNotListed(false); setInviteOrgName(''); setInviteOrgEmail('') }} style={{ fontSize: 12, color: '#888', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Cancel</button>
@@ -413,7 +411,7 @@ export default function JoinPage() {
 
         {step === 2 && (
           <Card>
-            <p style={hint}>Select at least one specialty. Don't see one you need? Use "Request to add" under any group — we'll review it. <span style={{ color: '#b3504f' }}>*</span></p>
+            <p style={hint}>Select at least one specialty. Don&apos;t see one you need? Use &quot;Request to add&quot; under any group — we&apos;ll review it. <span style={{ color: '#b3504f' }}>*</span></p>
             {selectedCats.length === 0 ? (
               <p style={hint}>Go back and select at least one category first.</p>
             ) : (
@@ -525,21 +523,15 @@ export default function JoinPage() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {AGE_GROUPS.map((opt) => (<button key={opt} type="button" onClick={() => toggle(opt, selectedAges, setSelectedAges)} style={pill(selectedAges.includes(opt))}>{opt}</button>))}
               </div>
-              <div style={{ marginTop: 14 }}>
-              <div style={secLabel}>Populations served</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {POPULATIONS.map((opt) => (<button key={opt} type="button" onClick={() => toggle(opt, selectedPopulations, setSelectedPopulations)} style={pill(selectedPopulations.includes(opt))}>{opt}</button>))}
-              </div>
-            </div>
             </div>
           </Card>
         )}
 
         {step === 4 && (
           <Card>
-            <p style={hint}>{isOrgMode ? 'Select the communities your organization has experience and competence serving.' : 'Select what genuinely reflects your training, experience, or demonstrated practice. This helps clients find providers who understand their lived experience.'}</p>
+            <p style={hint}>{isOrgMode ? 'Select the communities your organization has specific experience and competence serving.' : 'Select the communities you have specific experience and competence serving. This helps people find providers who understand their background and lived experience.'}</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {IDENTITY_TAGS.map((opt) => (<button key={opt} type="button" onClick={() => toggle(opt, selectedIdentity, setSelectedIdentity)} style={pill(selectedIdentity.includes(opt))}>{opt}</button>))}
+              {POPULATIONS.map((opt) => (<button key={opt} type="button" onClick={() => toggle(opt, selectedPopulations, setSelectedPopulations)} style={pill(selectedPopulations.includes(opt))}>{opt}</button>))}
             </div>
           </Card>
         )}
@@ -573,7 +565,7 @@ export default function JoinPage() {
               </Field>
             )}
             {isOrgMode && (
-              <div style={{ ...hint, padding: 12, background: mint, borderRadius: 8, color: dark }}>Your organization description from Step 1 will appear on your profile. After approval, you'll be able to add or invite the individual providers in your organization.</div>
+              <div style={{ ...hint, padding: 12, background: mint, borderRadius: 8, color: dark }}>Your organization description from Step 1 will appear on your profile. After approval, you&apos;ll be able to add or invite the individual providers in your organization.</div>
             )}
             <Field label={isOrgMode ? 'Main contact email' : 'Professional email'} required><input style={inp} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" /></Field>
             <Field label={isOrgMode ? 'Main phone' : 'Phone'} required><input style={inp} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(843) 555-0000" /></Field>
