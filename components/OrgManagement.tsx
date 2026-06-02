@@ -59,7 +59,9 @@ export default function OrgManagement({ providerId, isOrg }: { providerId: strin
       .neq('id', providerId)
       .ilike('full_name', `%${search.trim()}%`)
     q = isOrg ? q.eq('is_org', false) : q.eq('is_org', true)
-    const { data } = await q.limit(8)
+    const { data, error } = await q.limit(8)
+    if (error) { console.error('Org search error:', JSON.stringify(error)); setMsg('Search error: ' + error.message) }
+    else if (!data || data.length === 0) { setMsg('No matching ' + (isOrg ? 'providers' : 'organizations') + ' found.') }
     setResults((data || []) as ProviderLite[])
     setSearching(false)
   }
