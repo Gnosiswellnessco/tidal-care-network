@@ -9,6 +9,7 @@ import DirectoryMap from '@/components/DirectoryMap'
 import SignOutButton from '@/components/SignOutButton'
 import QRCodeImage from '@/components/QRCode'
 import { REGIONS, METROS_BY_REGION, regionForZip, type Region } from '@/lib/sc-regions'
+import { showsSupporterBadge, hasBooking, bookingAction, PREMIUM_ACCENT } from '@/lib/subscription'
 
 
 const teal = '#3e6a70'
@@ -34,6 +35,11 @@ type Provider = {
   map_lng?: number | null
   map_label?: string | null
   map_visibility?: string
+  is_premium?: boolean | null
+  subscription_status?: string | null
+  show_supporter_badge?: boolean | null
+  booking_type?: string | null
+  booking_value?: string | null
 }
 
 export default function DirectoryClient({ providers }: { providers: Provider[] }) {
@@ -400,6 +406,10 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               <img src="/endorsed.svg" alt="Endorsed" style={{ height: 18, width: 'auto' }} />
               <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Endorsed</strong> — vouched for by a peer provider</span>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <img src="/Supporter.svg" alt="Network supporter" style={{ height: 18, width: 'auto' }} />
+              <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Supporter</strong> — helps fund the network; not a quality or ranking signal</span>
+            </div>
           </div>
         </div>
       </section>
@@ -434,6 +444,8 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               const matchedIns = (p.provider_insurance || []).filter((i) => activeInsSet.has(i))
               const matchedPops = (p.provider_populations || []).filter((x) => activePopSet.has(x))
               const primaryCat = p.provider_categories.find((c) => c.is_primary)?.category || p.provider_categories[0]?.category
+              const supporter = showsSupporterBadge(p)
+              const booking = hasBooking(p) ? bookingAction(p) : null
               return (
               <div key={p.id} style={{ background: 'white', borderRadius: 12, border: isSelected(p.id) ? `2px solid ${teal}` : '1px solid #e5e3dc', padding: 24, position: 'relative' }}>
                 <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -450,6 +462,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                   <img src="/vetted.svg" alt="Vetted" style={{ height: 20, width: 'auto', display: 'block' }} />
                   {p.is_endorsed && <img src="/endorsed.svg" alt="Peer endorsed" style={{ height: 20, width: 'auto', display: 'block' }} />}
+                  {supporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 20, width: 'auto', display: 'block' }} />}
                 </div>
 
                 <Link href={`/provider/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -484,6 +497,13 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                     <RatingDisplay avg={p.rating_avg ?? null} count={p.rating_count ?? 0} size={14} />
                   </div>
                 </Link>
+
+                {booking && (
+                  <a href={booking.href} target={p.booking_type === 'link' ? '_blank' : undefined} rel={p.booking_type === 'link' ? 'noopener noreferrer' : undefined}
+                    style={{ display: 'inline-block', marginTop: 12, fontSize: 13, fontWeight: 500, color: 'white', background: PREMIUM_ACCENT, padding: '8px 16px', borderRadius: 8, textDecoration: 'none', letterSpacing: '0.02em' }}>
+                    {booking.label}
+                  </a>
+                )}
               </div>
             )})}
           </div>
