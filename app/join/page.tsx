@@ -24,6 +24,7 @@ const ATTESTATIONS = [
 type Org = { id: string; full_name: string; practice_name: string | null }
 type Address = { label: string; street: string; city: string; state: string; zip: string }
 type TagReq = { category: string; section: string; tag: string }
+type CredFile = { kind: 'license' | 'cert'; fileName: string; filePath: string }
 
 const emptyAddress = (): Address => ({ label: '', street: '', city: '', state: 'SC', zip: '' })
 
@@ -39,6 +40,9 @@ export default function JoinPage() {
   const [practiceName, setPracticeName] = useState('')
   const [practiceType, setPracticeType] = useState('')
   const [licenseNumber, setLicenseNumber] = useState('')
+  const [credentialType, setCredentialType] = useState('')
+  const [npiChecking, setNpiChecking] = useState(false)
+  const [npiCheck, setNpiCheck] = useState<{ status: string; message: string; registryName?: string; taxonomy?: string } | null>(null)
   const [npiNumber, setNpiNumber] = useState('')
   const [issuingBody, setIssuingBody] = useState('')
   const [availabilityStatus, setAvailabilityStatus] = useState('Yes — accepting now')
@@ -50,6 +54,9 @@ export default function JoinPage() {
   const [website, setWebsite] = useState('')
   const [photoUrl, setPhotoUrl] = useState('')
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+
+  const [credFiles, setCredFiles] = useState<CredFile[]>([])
+  const [uploadingCred, setUploadingCred] = useState(false)
 
   const [selectedCats, setSelectedCats] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -127,13 +134,56 @@ export default function JoinPage() {
     setUploadingPhoto(false)
   }
 
+  async function handleCredUpload(e: React.ChangeEvent<HTMLInputElement>, kind: 'license' | 'cert') {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 10 * 1024 * 1024) { setErrorMsg('File must be under 10MB.'); return }
+    const okType = file.type === 'application/pdf' || file.type.startsWith('image/')
+    if (!okType) { setErrorMsg('Please upload a PDF or image file.'); return }
+    setUploadingCred(true)
+    setErrorMsg('')
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setErrorMsg('Please sign in first to upload a credential.'); setUploadingCred(false); return }
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `temp/${user.id}/${Date.now()}-${safeName}`
+    const { error: uploadError } = await supabase.storage.from('provider-credentials').upload(path, file)
+    if (uploadError) { setErrorMsg('Upload failed: ' + uploadError.message); setUploadingCred(false); return }
+    setCredFiles((cur) => [...cur, { kind, fileName: file.name, filePath: path }])
+    setUploadingCred(false)
+    e.target.value = ''
+  }
+  function removeCredFile(idx: number) {
+    setCredFiles((cur) => cur.filter((_, i) => i !== idx))
+  }
+
+  async function checkNpi() {
+    if (!npiNumber.trim()) { setNpiCheck({ status: 'invalid', message: 'Enter an NPI number first.' }); return }
+    setNpiChecking(true)
+    setNpiCheck(null)
+    try {
+      const res = await fetch('/api/verify-npi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ npi: npiNumber.trim(), name: fullName }),
+      })
+      const out = await res.json()
+      setNpiCheck(out)
+    } catch {
+      setNpiCheck({ status: 'error', message: 'Could not reach the NPI registry. Try again.' })
+    }
+    setNpiChecking(false)
+  }
+
   function validateStep(s: number): string {
     if (s === 0) {
       if (!practiceType) return 'Please select a practice type.'
       if (!fullName.trim()) return isOrgMode ? 'Please enter the admin contact name.' : 'Please enter your full name.'
       if (!isOrgMode && !credentials.trim()) return 'Please enter your credentials or title.'
       if (!practiceName.trim() && isOrgMode) return 'Please enter your organization name.'
-      if (!licenseNumber.trim()) return isOrgMode ? 'Please enter your group license or NPI.' : 'Please enter your license or certification number.'
+      if (!credentialType) return 'Please select your credential type.'
+      if (credentialType === 'State license' && !licenseNumber.trim()) return 'Please enter your license number.'
+      if (credFiles.length === 0) return 'Please upload at least one license or certification document.'
     }
     if (s === 1) {
       if (selectedCats.length === 0) return 'Please select at least one category.'
@@ -188,6 +238,7 @@ export default function JoinPage() {
     }
     const availCode = availMap[availabilityStatus] || 'accepting'
     const offersTele = telehealth !== 'No — in-person only'
+    const vettingTrack = 'credentialed'
 
     const { data: provider, error: provErr } = await supabase
       .from('providers')
@@ -198,6 +249,11 @@ export default function JoinPage() {
         practice_name: practiceName || null,
         practice_type: practiceType || null,
         license_number: licenseNumber || null,
+        credential_type: credentialType || null,
+        npi_verified_status: npiCheck?.status || null,
+        npi_registry_name: npiCheck?.registryName || null,
+        npi_registry_taxonomy: npiCheck?.taxonomy || null,
+        npi_checked_at: npiCheck ? new Date().toISOString() : null,
         npi_number: npiNumber || null,
         issuing_body: issuingBody || null,
         availability_status: availCode,
@@ -209,6 +265,7 @@ export default function JoinPage() {
         website: website || null,
         photo_url: photoUrl || null,
         vetting_status: 'pending',
+        vetting_track: vettingTrack,
         is_active: true,
         is_org: isOrgMode,
         org_id: !isOrgMode && selectedOrg ? selectedOrg.id : null,
@@ -228,6 +285,13 @@ export default function JoinPage() {
         selectedCats.map((cat, i) => ({ provider_id: provider.id, category: cat, is_primary: i === 0 }))
       )
     }
+
+    if (credFiles.length > 0) {
+      await supabase.from('provider_credentials').insert(
+        credFiles.map((f) => ({ provider_id: provider.id, file_path: f.filePath, file_name: f.fileName, kind: f.kind }))
+      )
+    }
+
     if (selectedTags.length > 0) {
       await supabase.from('provider_tags').insert(
         selectedTags.map((t) => {
@@ -341,9 +405,61 @@ export default function JoinPage() {
               <Field label="Brief organization description"><textarea style={{ ...inp, minHeight: 70, resize: 'vertical' }} value={bio} onChange={(e) => setBio(e.target.value)} placeholder="What your organization does and the care it provides." /></Field>
             )}
 
-            <Field label={isOrgMode ? 'Organization NPI / group license' : 'SC license or certification number'} required><input style={inp} value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder={isOrgMode ? 'Group NPI or license number' : 'e.g. LCS-12345, OT-9876'} /></Field>
-            {!isOrgMode && <Field label="NPI number (if applicable)"><input style={inp} value={npiNumber} onChange={(e) => setNpiNumber(e.target.value)} placeholder="10-digit NPI" /></Field>}
+            <Field label="Credential type" required>
+              <select style={selectStyle} value={credentialType} onChange={(e) => setCredentialType(e.target.value)}>
+                <option value="">Select…</option>
+                <option value="State license">State license</option>
+                <option value="Certification">Certification</option>
+                <option value="Registration">Registration</option>
+                <option value="Other">Other</option>
+              </select>
+            </Field>
+            <Field label={credentialType === 'State license' ? (isOrgMode ? 'Organization NPI / group license number' : 'License number') : (isOrgMode ? 'Organization NPI / license number (if applicable)' : 'Credential number (if applicable)')} required={credentialType === 'State license'}>
+              <input style={inp} value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder={isOrgMode ? 'Group NPI or license number' : 'e.g. LCS-12345, OT-9876'} />
+              {credentialType && credentialType !== 'State license' && <p style={{ fontSize: 11, color: '#999', marginTop: 5 }}>Optional — many certifications don&apos;t have a number. Leave blank if yours doesn&apos;t.</p>}
+            </Field>
+            {!isOrgMode && (
+              <Field label="NPI number (if applicable)">
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input style={{ ...inp, flex: 1 }} value={npiNumber} onChange={(e) => { setNpiNumber(e.target.value); setNpiCheck(null) }} placeholder="10-digit NPI" maxLength={10} />
+                  <button type="button" onClick={checkNpi} disabled={npiChecking || !npiNumber.trim()} style={{ fontSize: 13, fontWeight: 500, padding: '0 16px', borderRadius: 8, border: '1px solid ' + teal, background: 'white', color: teal, cursor: npiChecking || !npiNumber.trim() ? 'default' : 'pointer', whiteSpace: 'nowrap', opacity: npiChecking || !npiNumber.trim() ? 0.5 : 1 }}>
+                    {npiChecking ? 'Checking…' : 'Verify'}
+                  </button>
+                </div>
+                {npiCheck && (
+                  <p style={{ fontSize: 12, marginTop: 6, lineHeight: 1.5, color: npiCheck.status === 'match' ? '#27500a' : npiCheck.status === 'error' || npiCheck.status === 'invalid' || npiCheck.status === 'not_found' ? '#b3504f' : '#9a6b1e' }}>
+                    {npiCheck.status === 'match' ? '✓ ' : ''}{npiCheck.message}
+                  </p>
+                )}
+                <p style={{ fontSize: 11, color: '#999', marginTop: 5 }}>Optional. If you have an NPI, click Verify to confirm it against the federal registry.</p>
+              </Field>
+            )}
             <Field label={isOrgMode ? 'Accreditation / certifying body (if applicable)' : 'Issuing body (if no SC license)'}><input style={inp} value={issuingBody} onChange={(e) => setIssuingBody(e.target.value)} placeholder={isOrgMode ? 'e.g. The Joint Commission, CARF' : 'e.g. NCCAOM, NBCC, AOTA'} /></Field>
+
+            <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid #eee' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: dark, marginBottom: 4 }}>Upload your license or certification <span style={{ color: '#b3504f' }}>*</span></div>
+              <p style={{ fontSize: 12, color: '#888', marginBottom: 10, lineHeight: 1.5 }}>Upload at least one document showing a state license or a professional certification. You may upload more than one (for example, a license plus an additional certification). PDF or image, up to 10MB each. These are kept private and seen only by the network administrator for vetting.</p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                <label style={{ display: 'inline-block', fontSize: 13, fontWeight: 500, padding: '8px 16px', borderRadius: 8, border: '1px solid ' + teal, background: 'white', color: teal, cursor: uploadingCred ? 'default' : 'pointer' }}>
+                  {uploadingCred ? 'Uploading…' : '+ Upload license'}
+                  <input type="file" accept="application/pdf,image/*" onChange={(e) => handleCredUpload(e, 'license')} disabled={uploadingCred} style={{ display: 'none' }} />
+                </label>
+                <label style={{ display: 'inline-block', fontSize: 13, fontWeight: 500, padding: '8px 16px', borderRadius: 8, border: '1px solid ' + teal, background: 'white', color: teal, cursor: uploadingCred ? 'default' : 'pointer' }}>
+                  {uploadingCred ? 'Uploading…' : '+ Upload certification'}
+                  <input type="file" accept="application/pdf,image/*" onChange={(e) => handleCredUpload(e, 'cert')} disabled={uploadingCred} style={{ display: 'none' }} />
+                </label>
+              </div>
+              {credFiles.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {credFiles.map((f, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 12px', background: mint, borderRadius: 8 }}>
+                      <span style={{ fontSize: 13, color: dark }}>✓ {f.fileName} <span style={{ color: '#888', fontWeight: 500 }}>· {f.kind === 'license' ? 'License' : 'Certification'}</span></span>
+                      <button type="button" onClick={() => removeCredFile(i)} style={{ fontSize: 12, color: '#991b1b', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {!isOrgMode && (
               <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid #eee' }}>
