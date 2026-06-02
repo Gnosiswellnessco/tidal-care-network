@@ -65,6 +65,25 @@ export default async function DashboardPage() {
                 <strong>Boost your visibility.</strong> Providers with peer endorsements appear higher in the directory search results. Request an endorsement from a colleague below — it only takes them one click to confirm.
               </p>
             </div>
+
+            {provider.vetting_status === 'approved' && (
+              <div style={{ marginTop: 16, padding: '16px 18px', background: '#faf9f5', borderRadius: 10, border: '1px solid #eee' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#2c4d52', marginBottom: 8 }}>How your placement in the directory works</div>
+                <p style={{ fontSize: 13, color: '#555', lineHeight: 1.7, margin: '0 0 8px' }}>
+                  We don&apos;t sell placement, and you can&apos;t pay to rank higher — the directory stays merit-based so the people we serve can trust it. A few things genuinely help where you appear in results:
+                </p>
+                <ul style={{ fontSize: 13, color: '#555', lineHeight: 1.7, margin: '0 0 8px', paddingLeft: 18 }}>
+                  <li><strong>Being vetted</strong> — completing verification and staying in good standing.</li>
+                  <li><strong>Peer endorsements</strong> — colleagues vouching for you carries real weight.</li>
+                  <li><strong>Client ratings</strong> — positive reviews from people you&apos;ve worked with.</li>
+                  <li><strong>Keeping your status current</strong> — marking yourself as accepting new clients when you are, and keeping your profile complete and up to date.</li>
+                </ul>
+                <p style={{ fontSize: 12, color: '#888', lineHeight: 1.6, margin: 0 }}>
+                  We don&apos;t publish an exact formula — partly to keep it fair and resistant to gaming. The honest summary: do good work, stay verified, keep your profile current, and the directory reflects that.
+                </p>
+              </div>
+            )}
+
             <div>
               <EndorsementRequest providerId={provider.id} />
             </div>

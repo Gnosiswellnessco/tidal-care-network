@@ -1,7 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import DirectoryClient from './DirectoryClient'
-import SignOutButton from '@/components/SignOutButton'
-import BrandLogo from '@/components/BrandLogo'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +26,12 @@ export default async function DirectoryPage() {
     .select('provider_id, tag_type, tag_value')
     .in('provider_id', safeIds)
 
-    const { data: endorsed } = await supabase
+  const { data: insurance } = await supabase
+    .from('provider_insurance')
+    .select('provider_id, insurance')
+    .in('provider_id', safeIds)
+
+  const { data: endorsed } = await supabase
     .from('endorsements')
     .select('provider_id')
     .eq('status', 'confirmed')
@@ -38,12 +41,12 @@ export default async function DirectoryPage() {
     .from('ratings')
     .select('provider_id, stars')
     .in('provider_id', safeIds)
-    const { data: addresses } = await supabase
+
+  const { data: addresses } = await supabase
     .from('provider_addresses')
     .select('provider_id, label, latitude, longitude, visibility, is_primary')
     .in('provider_id', safeIds)
 
-  // Compute average rating per provider
   function avgFor(pid: string) {
     const rs = (ratings || []).filter((r) => r.provider_id === pid)
     if (rs.length === 0) return { avg: null as number | null, count: 0 }
@@ -59,6 +62,7 @@ export default async function DirectoryPage() {
       ...p,
       provider_categories: (cats || []).filter((c) => c.provider_id === p.id),
       provider_tags: (tags || []).filter((t) => t.provider_id === p.id),
+      provider_insurance: (insurance || []).filter((i) => i.provider_id === p.id).map((i) => i.insurance),
       is_endorsed: (endorsed || []).some((e) => e.provider_id === p.id),
       rating_avg: avg,
       rating_count: count,
@@ -69,7 +73,6 @@ export default async function DirectoryPage() {
     }
   })
 
-  // Rank: endorsed first, then by rating (no-rating = neutral 3.5), then accepting, then name
   const NEUTRAL = 3.5
   providers.sort((a, b) => {
     if (a.is_endorsed !== b.is_endorsed) return a.is_endorsed ? -1 : 1

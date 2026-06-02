@@ -114,12 +114,27 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
             </Section>
           )}
 
-          <Section title="Contact">
-            <div style={{ fontSize: 14, color: '#444', lineHeight: 1.8 }}>
+          <Section title="Contact this provider">
+            <div style={{ fontSize: 14, color: '#444', lineHeight: 1.8, marginBottom: 14 }}>
               {p.email && <div>Email: <a href={`mailto:${p.email}`} style={{ color: '#3e6a70' }}>{p.email}</a></div>}
-              {p.phone && <div>Phone: {p.phone}</div>}
+              {p.phone && <div>Phone: <a href={`tel:${p.phone}`} style={{ color: '#3e6a70' }}>{p.phone}</a></div>}
               {p.website && <div>Website: <a href={p.website} target="_blank" rel="noopener noreferrer" style={{ color: '#3e6a70' }}>{p.website}</a></div>}
             </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {p.email && (
+                <a href={`mailto:${p.email}?subject=${encodeURIComponent('Connecting via Tidal Care Network')}`} style={{ fontSize: 14, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
+                  Email this provider
+                </a>
+              )}
+              {p.phone && (
+                <a href={`tel:${p.phone}`} style={{ fontSize: 14, fontWeight: 500, color: '#3e6a70', background: 'white', border: '1px solid #3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
+                  Call
+                </a>
+              )}
+            </div>
+            <p style={{ fontSize: 11, color: '#999', marginTop: 10, lineHeight: 1.5 }}>
+              The email button opens your device&apos;s default mail app. Please don&apos;t include anyone&apos;s personal health information in your message.
+            </p>
           </Section>
 
           <Section title="Reviews">

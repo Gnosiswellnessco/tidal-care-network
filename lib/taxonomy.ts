@@ -23,7 +23,21 @@ export const CATEGORIES = [
   { key: 'casemgmt', label: 'Case management & social services', icon: '🤝', description: 'Care coordination, benefits navigation, and resource linkage.' },
   { key: 'peer', label: 'Peer & community', icon: '👥', description: 'Peer support specialists, recovery coaches, and community health workers.' },
 ] as const
-
+export const POPULATIONS = [
+  'Veterans', 'Active military', 'Military families', 'First responders',
+  'LGBTQ+', 'Transgender / nonbinary', 'BIPOC', 'Black / African American',
+  'Latino / Hispanic', 'Asian / Pacific Islander', 'Indigenous / Native American',
+  'Immigrants / refugees', 'Undocumented community', 'Multilingual / non-English speakers',
+  'Deaf / hard of hearing', 'Blind / low vision', 'People with disabilities',
+  'Neurodivergent / autistic adults', 'Chronic illness', 'Cancer patients & survivors',
+  'College / university students', 'Teens & adolescents', 'New & expecting parents',
+  'Older adults / seniors', 'Caregivers', 'Foster & adoptive families',
+  'Justice-involved / reentry', 'People experiencing homelessness',
+  'Low-income / uninsured', 'Survivors of abuse / domestic violence',
+  'Survivors of sexual assault', 'Grief & loss', 'Faith communities',
+  'Interfaith / secular', 'Sex workers', 'Polyamorous / non-monogamous',
+  'Adoptees', 'Twice exceptional (2e)', 'HIV+ community',
+]
 export const TAGS: Record<string, { title: string; options: string[] }[]> = {
   mental: [
     { title: 'Presenting concerns', options: ['Anxiety / stress', 'Panic attacks', 'Depression / mood', 'Bipolar', 'Trauma / PTSD', 'Complex trauma (C-PTSD)', 'Grief / loss', 'Relationship / couples issues', 'Family conflict', 'Divorce / separation', 'Parenting support', 'Life transitions', 'Self-esteem / identity', 'OCD', 'Phobias', 'Perinatal / postpartum', 'Anger management', 'Caregiver burnout', 'Chronic illness adjustment', 'Chronic pain', 'Sleep / insomnia', 'Eating concerns / body image', 'Disordered eating', 'Sexual concerns / intimacy', 'Sexuality & gender identity', "Men's issues", "Women's issues", 'Work / career stress', 'Burnout', 'Academic / school stress', 'Financial stress', 'Religious / spiritual concerns', 'Religious trauma', 'Racial / cultural identity', 'Immigration / acculturation', 'Dissociation', 'Self-harm', 'Attachment issues', 'Codependency', 'Highly sensitive person (HSP)', 'Neurodivergence / ADHD support', 'Autism support'] },

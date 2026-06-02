@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORIES, INSURANCE_OPTIONS, AGE_GROUPS, IDENTITY_TAGS } from '@/lib/taxonomy'
+import { CATEGORIES, INSURANCE_OPTIONS, AGE_GROUPS, IDENTITY_TAGS, POPULATIONS } from '@/lib/taxonomy'
 import { useMergedTags } from '@/hooks/useTaxonomy'
 import { CategoryIcon } from '@/components/CategoryIcon'
+import { CATEGORIES, INSURANCE_OPTIONS, AGE_GROUPS, IDENTITY_TAGS, POPULATIONS } from '@/lib/taxonomy'
 
 const teal = '#3e6a70'
 const dark = '#2c4d52'
@@ -55,6 +56,7 @@ export default function JoinPage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [selectedInsurance, setSelectedInsurance] = useState<string[]>([])
   const [selectedAges, setSelectedAges] = useState<string[]>([])
+  const [selectedPopulations, setSelectedPopulations] = useState<string[]>([])
   const [selectedIdentity, setSelectedIdentity] = useState<string[]>([])
   const [addresses, setAddresses] = useState<Address[]>([emptyAddress()])
 
@@ -240,6 +242,11 @@ export default function JoinPage() {
       await supabase.from('provider_insurance').insert(
         selectedInsurance.map((ins) => ({ provider_id: provider.id, insurance: ins }))
       )
+      if (selectedPopulations.length > 0) {
+      await supabase.from('provider_populations').insert(
+        selectedPopulations.map((pop) => ({ provider_id: provider.id, population: pop }))
+      )
+    }
     }
 
     // Save any requested tags as pending tag_requests
@@ -518,6 +525,12 @@ export default function JoinPage() {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {AGE_GROUPS.map((opt) => (<button key={opt} type="button" onClick={() => toggle(opt, selectedAges, setSelectedAges)} style={pill(selectedAges.includes(opt))}>{opt}</button>))}
               </div>
+              <div style={{ marginTop: 14 }}>
+              <div style={secLabel}>Populations served</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {POPULATIONS.map((opt) => (<button key={opt} type="button" onClick={() => toggle(opt, selectedPopulations, setSelectedPopulations)} style={pill(selectedPopulations.includes(opt))}>{opt}</button>))}
+              </div>
+            </div>
             </div>
           </Card>
         )}

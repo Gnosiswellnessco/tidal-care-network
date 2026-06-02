@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORIES, TAGS } from '@/lib/taxonomy'
+import { CATEGORIES, TAGS, POPULATIONS, INSURANCE_OPTIONS } from '@/lib/taxonomy'
 import { RatingDisplay } from '@/components/RatingWidget'
 import DirectoryMap from '@/components/DirectoryMap'
 import SignOutButton from '@/components/SignOutButton'
-import BrandLogo from '@/components/BrandLogo'
 import QRCodeImage from '@/components/QRCode'
 import { REGIONS, METROS_BY_REGION, regionForZip, type Region } from '@/lib/sc-regions'
 
@@ -26,6 +25,8 @@ type Provider = {
   offers_telehealth: boolean; availability_status: string; phone?: string | null; email?: string | null; website?: string | null
   provider_categories: { category: string; is_primary: boolean }[]
   provider_tags: { tag_type: string; tag_value: string }[]
+  provider_insurance?: string[]
+  provider_populations?: string[]
   is_endorsed?: boolean
   rating_avg?: number | null
   rating_count?: number
@@ -39,7 +40,14 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   const [search, setSearch] = useState('')
   const [agreed, setAgreed] = useState(true)
   const [category, setCategory] = useState('')
-  const [specialty, setSpecialty] = useState('')
+  const [specialties, setSpecialties] = useState<string[]>([])
+  const [specMode, setSpecMode] = useState<'any' | 'all'>('any')
+  const [specOpen, setSpecOpen] = useState(false)
+  const [insurances, setInsurances] = useState<string[]>([])
+  const [insOpen, setInsOpen] = useState(false)
+  const [pops, setPops] = useState<string[]>([])
+  const [popMode, setPopMode] = useState<'any' | 'all'>('any')
+  const [popOpen, setPopOpen] = useState(false)
   const [region, setRegion] = useState<Region | ''>('')
   const [area, setArea] = useState('')
   const [teleOnly, setTeleOnly] = useState(false)
@@ -56,8 +64,11 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   const [copied, setCopied] = useState(false)
   const [myProviderId, setMyProviderId] = useState<string | null>(null)
   const [favorites, setFavorites] = useState<string[]>([])
-  const [loggedIn, setLoggedIn] = useState(false)
   const [view, setView] = useState<'list' | 'map'>('list')
+
+  const specRef = useRef<HTMLDivElement>(null)
+  const insRef = useRef<HTMLDivElement>(null)
+  const popRef = useRef<HTMLDivElement>(null)
 
   useState(() => {
     if (typeof window !== 'undefined') {
@@ -70,17 +81,27 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
     window.localStorage.setItem('tcn_terms_agreed', 'yes')
     setAgreed(true)
   }
+
   useEffect(() => {
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
-      setLoggedIn(true)
       const { data: me } = await supabase.from('providers').select('id').eq('user_id', user.id).maybeSingle()
       if (!me) return
       setMyProviderId(me.id)
       const { data: favs } = await supabase.from('provider_favorites').select('favorite_provider_id').eq('owner_provider_id', me.id)
       setFavorites((favs || []).map((f) => f.favorite_provider_id))
     })
+  }, [])
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (specRef.current && !specRef.current.contains(e.target as Node)) setSpecOpen(false)
+      if (insRef.current && !insRef.current.contains(e.target as Node)) setInsOpen(false)
+      if (popRef.current && !popRef.current.contains(e.target as Node)) setPopOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
   }, [])
 
   async function toggleFavorite(targetId: string) {
@@ -95,19 +116,51 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
     }
   }
 
-  const specialtyOptions = useMemo(() => {
+  const specialtySections = useMemo(() => {
     if (!category) return []
-    return (TAGS[category] || []).flatMap((s) => s.options)
+    return TAGS[category] || []
   }, [category])
+
+  const insuranceOptions = INSURANCE_OPTIONS
+
+  function toggleSpecialty(val: string) {
+    setSpecialties((cur) => cur.includes(val) ? cur.filter((s) => s !== val) : [...cur, val])
+  }
+  function toggleInsurance(val: string) {
+    setInsurances((cur) => cur.includes(val) ? cur.filter((s) => s !== val) : [...cur, val])
+  }
+  function togglePop(val: string) {
+    setPops((cur) => cur.includes(val) ? cur.filter((s) => s !== val) : [...cur, val])
+  }
 
   const filtered = useMemo(() => {
     return providers.filter((p) => {
       if (search.trim()) {
         const q = search.toLowerCase()
-        if (!`${p.full_name} ${p.practice_name || ''} ${p.bio || ''}`.toLowerCase().includes(q)) return false
+        const hay = `${p.full_name} ${p.practice_name || ''} ${p.bio || ''} ${(p.provider_insurance || []).join(' ')} ${(p.provider_populations || []).join(' ')} ${p.provider_tags.map((t) => t.tag_value).join(' ')}`.toLowerCase()
+        if (!hay.includes(q)) return false
       }
       if (category && !p.provider_categories.some((c) => c.category === category)) return false
-      if (specialty && !p.provider_tags.some((t) => t.tag_value === specialty)) return false
+      if (specialties.length > 0) {
+        const pTags = p.provider_tags.map((t) => t.tag_value)
+        if (specMode === 'all') {
+          if (!specialties.every((s) => pTags.includes(s))) return false
+        } else {
+          if (!specialties.some((s) => pTags.includes(s))) return false
+        }
+      }
+      if (insurances.length > 0) {
+        const pIns = p.provider_insurance || []
+        if (!insurances.some((i) => pIns.includes(i))) return false
+      }
+      if (pops.length > 0) {
+        const pPops = p.provider_populations || []
+        if (popMode === 'all') {
+          if (!pops.every((x) => pPops.includes(x))) return false
+        } else {
+          if (!pops.some((x) => pPops.includes(x))) return false
+        }
+      }
       if (teleOnly && !p.offers_telehealth) return false
       if (acceptingOnly && p.availability_status !== 'accepting') return false
       if (region) {
@@ -117,7 +170,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
       }
       return true
     })
-  }, [providers, search, category, specialty, teleOnly, acceptingOnly, region, area])
+  }, [providers, search, category, specialties, specMode, insurances, pops, popMode, teleOnly, acceptingOnly, region, area])
 
   function toggleSelect(p: Provider) {
     setSelected((cur) => cur.some((s) => s.id === p.id) ? cur.filter((s) => s.id !== p.id) : [...cur, p])
@@ -125,7 +178,10 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   }
   const isSelected = (id: string) => selected.some((s) => s.id === id)
 
-  // Create an ANONYMOUS referral: no client name/email is ever stored.
+  function clearFilters() {
+    setCategory(''); setSpecialties([]); setInsurances([]); setPops([]); setRegion(''); setArea(''); setTeleOnly(false); setAcceptingOnly(false); setSearch('')
+  }
+
   async function handleCreate() {
     setError('')
     if (selected.length === 0) { setError('Select at least one provider.'); return }
@@ -143,13 +199,8 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
 
     const { data: referral, error: refErr } = await supabase
       .from('referrals')
-      .insert({
-        from_provider_id: fromId,
-        referral_type: 'client',
-        note: note || null,
-        share_token: token,
-        status: 'sent',
-      }).select().single()
+      .insert({ from_provider_id: fromId, referral_type: 'client', note: note || null, share_token: token, status: 'sent' })
+      .select().single()
 
     if (refErr || !referral) { setError('Could not create referral: ' + (refErr?.message || 'unknown')); setSending(false); return }
 
@@ -171,6 +222,12 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   }
 
   const mailtoHref = `mailto:?subject=${encodeURIComponent('A referral from Tidal Care Network')}&body=${encodeURIComponent(`You've been referred to a provider through Tidal Care Network. View the details and contact information here:\n\n${shareUrl}\n\nThese are vetted members of the network.`)}`
+
+  const activeSpecSet = new Set(specialties)
+  const activeInsSet = new Set(insurances)
+  const activePopSet = new Set(pops)
+
+  const anyFilterActive = !!(category || specialties.length || insurances.length || pops.length || region || teleOnly || acceptingOnly || search)
 
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
@@ -222,15 +279,92 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
       <section style={{ maxWidth: 1000, margin: '0 auto', padding: '8px 40px 16px' }}>
         <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 16 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, practice, or keyword…" style={{ flex: '1 1 220px', padding: '10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: 'white' }} />
-            <select value={category} onChange={(e) => { setCategory(e.target.value); setSpecialty('') }} style={selectStyle}>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, practice, keyword, specialty, insurance, or population…" style={{ flex: '1 1 220px', padding: '10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: 'white' }} />
+            <select value={category} onChange={(e) => { setCategory(e.target.value); setSpecialties([]) }} style={selectStyle}>
               <option value="">All categories</option>
               {CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
             </select>
-            <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} disabled={!category} style={{ ...selectStyle, color: category ? '#1a1a1a' : '#aaa', opacity: category ? 1 : 0.6 }}>
-              <option value="">{category ? 'All specialties' : 'Pick a category first'}</option>
-              {specialtyOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+
+            {/* Specialty multi-select */}
+            <div ref={specRef} style={{ position: 'relative' }}>
+              <button onClick={() => category && setSpecOpen((o) => !o)} disabled={!category}
+                style={{ ...selectStyle, minWidth: 170, textAlign: 'left', color: category ? '#1a1a1a' : '#aaa', opacity: category ? 1 : 0.6, cursor: category ? 'pointer' : 'default' }}>
+                {specialties.length ? `Specialties (${specialties.length})` : (category ? 'All specialties' : 'Pick a category first')}
+              </button>
+              {specOpen && category && (
+                <div style={panel}>
+                  <div style={panelHeader}>
+                    <span style={{ fontSize: 12, color: '#888', alignSelf: 'center' }}>Match:</span>
+                    <button onClick={() => setSpecMode('any')} style={modeBtn(specMode === 'any')}>Any</button>
+                    <button onClick={() => setSpecMode('all')} style={modeBtn(specMode === 'all')}>All</button>
+                    {specialties.length > 0 && <button onClick={() => setSpecialties([])} style={clearBtn}>Clear</button>}
+                  </div>
+                  {specialtySections.map((sec) => (
+                    <div key={sec.title} style={{ marginBottom: 10 }}>
+                      <div style={panelSecLabel}>{sec.title}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {sec.options.map((opt) => (
+                          <label key={opt} style={checkRow}>
+                            <input type="checkbox" checked={specialties.includes(opt)} onChange={() => toggleSpecialty(opt)} />
+                            {opt}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Populations multi-select */}
+            <div ref={popRef} style={{ position: 'relative' }}>
+              <button onClick={() => setPopOpen((o) => !o)} style={{ ...selectStyle, minWidth: 160, textAlign: 'left' }}>
+                {pops.length ? `Populations (${pops.length})` : 'All populations'}
+              </button>
+              {popOpen && (
+                <div style={panel}>
+                  <div style={panelHeader}>
+                    <span style={{ fontSize: 12, color: '#888', alignSelf: 'center' }}>Match:</span>
+                    <button onClick={() => setPopMode('any')} style={modeBtn(popMode === 'any')}>Any</button>
+                    <button onClick={() => setPopMode('all')} style={modeBtn(popMode === 'all')}>All</button>
+                    {pops.length > 0 && <button onClick={() => setPops([])} style={clearBtn}>Clear</button>}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {POPULATIONS.map((opt) => (
+                      <label key={opt} style={checkRow}>
+                        <input type="checkbox" checked={pops.includes(opt)} onChange={() => togglePop(opt)} />
+                        {opt}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Insurance multi-select */}
+            <div ref={insRef} style={{ position: 'relative' }}>
+              <button onClick={() => setInsOpen((o) => !o)} style={{ ...selectStyle, minWidth: 150, textAlign: 'left' }}>
+                {insurances.length ? `Insurance (${insurances.length})` : 'All insurance'}
+              </button>
+              {insOpen && (
+                <div style={panel}>
+                  {insurances.length > 0 && <button onClick={() => setInsurances([])} style={{ ...clearBtn, marginBottom: 6 }}>Clear</button>}
+                  {insuranceOptions.length === 0 ? (
+                    <p style={{ fontSize: 13, color: '#999', margin: 0 }}>No insurance data yet.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {insuranceOptions.map((opt) => (
+                        <label key={opt} style={checkRow}>
+                          <input type="checkbox" checked={insurances.includes(opt)} onChange={() => toggleInsurance(opt)} />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <select value={region} onChange={(e) => { setRegion(e.target.value as Region | ''); setArea('') }} style={selectStyle}>
               <option value="">All regions</option>
               {REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
@@ -243,6 +377,17 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 14, paddingTop: 14, borderTop: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: dark, cursor: 'pointer' }}><input type="checkbox" checked={teleOnly} onChange={(e) => setTeleOnly(e.target.checked)} /> Telehealth available</label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: dark, cursor: 'pointer' }}><input type="checkbox" checked={acceptingOnly} onChange={(e) => setAcceptingOnly(e.target.checked)} /> Accepting new clients</label>
+            {anyFilterActive && <button onClick={clearFilters} style={{ fontSize: 13, color: teal, background: 'none', border: 'none', cursor: 'pointer', marginLeft: 'auto', fontWeight: 500 }}>Clear all filters</button>}
+          </div>
+          <div style={{ display: 'flex', gap: 20, alignItems: 'center', marginTop: 14, paddingTop: 14, borderTop: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <img src="/vetted.svg" alt="Vetted" style={{ height: 18, width: 'auto' }} />
+              <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Vetted</strong> — credentials reviewed by the Network</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <img src="/endorsed.svg" alt="Endorsed" style={{ height: 18, width: 'auto' }} />
+              <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Endorsed</strong> — vouched for by a peer provider</span>
+            </div>
           </div>
         </div>
       </section>
@@ -272,7 +417,12 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
           <p style={{ fontSize: 15, color: '#888', padding: '32px 0', textAlign: 'center' }}>No providers match your filters.</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
-            {filtered.map((p) => (
+            {filtered.map((p) => {
+              const matchedSpecs = p.provider_tags.map((t) => t.tag_value).filter((t) => activeSpecSet.has(t))
+              const matchedIns = (p.provider_insurance || []).filter((i) => activeInsSet.has(i))
+              const matchedPops = (p.provider_populations || []).filter((x) => activePopSet.has(x))
+              const primaryCat = p.provider_categories.find((c) => c.is_primary)?.category || p.provider_categories[0]?.category
+              return (
               <div key={p.id} style={{ background: 'white', borderRadius: 12, border: isSelected(p.id) ? `2px solid ${teal}` : '1px solid #e5e3dc', padding: 24, position: 'relative' }}>
                 <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
                   {myProviderId && myProviderId !== p.id && (
@@ -297,24 +447,47 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                     </div>
                     <div>
                       <div style={{ fontSize: 17, fontWeight: 600, color: dark, marginBottom: 2 }}>{p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}</div>
-                      <div style={{ fontSize: 13, color: '#888' }}>{p.practice_name && !p.is_org ? `${p.practice_name} · ` : ''}{p.primary_area}{p.offers_telehealth ? ' · Telehealth' : ''}</div>
+                      <div style={{ fontSize: 13, color: '#888' }}>{p.practice_name && !p.is_org ? `${p.practice_name} · ` : ''}{p.primary_area}</div>
                     </div>
                   </div>
                   {p.bio && <p style={{ fontSize: 14, lineHeight: 1.6, color: '#555', marginBottom: 12 }}>{p.bio}</p>}
-                  {p.provider_categories.length > 0 && (
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-                      {p.provider_categories.map((pc) => <span key={pc.category} style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: mint, color: dark }}>{categoryLabel(pc.category)}</span>)}
+
+                  {(matchedSpecs.length > 0 || matchedIns.length > 0 || matchedPops.length > 0) && (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                      {matchedSpecs.map((s) => <span key={'ms' + s} style={matchChip}>✓ {s}</span>)}
+                      {matchedPops.map((x) => <span key={'mp' + x} style={matchChip}>✓ {x}</span>)}
+                      {matchedIns.map((i) => <span key={'mi' + i} style={matchChip}>✓ {i}</span>)}
                     </div>
                   )}
-                  {p.availability_status === 'accepting' && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 6, background: '#eaf3de', color: '#27500a' }}>Accepting clients</span>}
+
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                    {primaryCat && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: mint, color: dark }}>{categoryLabel(primaryCat)}</span>}
+                    {p.availability_status === 'accepting' && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: '#eaf3de', color: '#27500a' }}>Accepting clients</span>}
+                    {p.offers_telehealth && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: '#e8eff5', color: '#2c4d6e' }}>Telehealth</span>}
+                    {(p.provider_insurance || []).slice(0, 2).map((i) => <span key={'ins' + i} style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: '#f1efe8', color: '#555' }}>{i}</span>)}
+                    {(p.provider_insurance || []).length > 2 && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: '#f1efe8', color: '#999' }}>+{(p.provider_insurance || []).length - 2} more</span>}
+                  </div>
+
                   <div style={{ marginTop: 8 }}>
                     <RatingDisplay avg={p.rating_avg ?? null} count={p.rating_count ?? 0} size={14} />
                   </div>
                 </Link>
               </div>
-            ))}
+            )})}
           </div>
         )}
+      </section>
+
+      <section style={{ maxWidth: 1000, margin: '0 auto', padding: '0 40px 80px' }}>
+        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: '20px 24px', fontSize: 13, color: '#777', lineHeight: 1.7 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>How to use this directory</div>
+          <p style={{ margin: '0 0 8px' }}>
+            Browse or filter providers by category, specialty, population, insurance, region, telehealth, and whether they&apos;re accepting new clients. Open any provider&apos;s profile to see their full details and contact information. To build a referral, check &quot;Refer&quot; on one or more providers, then create a private link you can share, show as a QR code, or print.
+          </p>
+          <p style={{ margin: 0 }}>
+            Tidal Care Network is a directory only — providers are independent professionals, and a listing is not a guarantee or endorsement of care. In an emergency call <strong>911</strong>, or call/text <strong>988</strong> for mental health crisis support. By using this directory you agree to our <Link href="/terms" style={{ color: teal }}>Terms of Use</Link>.
+          </p>
+        </div>
       </section>
 
       {selected.length > 0 && (
@@ -334,7 +507,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
 
             {step !== 'done' && (
               <p style={{ fontSize: 12, color: '#888', marginBottom: 16, lineHeight: 1.5, background: mint, padding: '8px 12px', borderRadius: 8 }}>
-                Keep browsing and checking "Refer" on any provider to add them here. When you're ready, create a private referral link to share, show as a QR code, or print.
+                Keep browsing and checking &quot;Refer&quot; on any provider to add them here. When you&apos;re ready, create a private referral link to share, show as a QR code, or print.
               </p>
             )}
 
@@ -364,9 +537,18 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
                   {selected.map((p) => (
-                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'white', borderRadius: 8, border: '1px solid #e5e3dc' }}>
-                      <span style={{ fontSize: 13, color: dark, fontWeight: 500 }}>{p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}</span>
-                      <button onClick={() => toggleSelect(p)} style={{ fontSize: 12, color: '#991b1b', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+                    <div key={p.id} style={{ padding: '10px 12px', background: 'white', borderRadius: 8, border: '1px solid #e5e3dc' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <span style={{ fontSize: 13, color: dark, fontWeight: 500 }}>{p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}</span>
+                        <button onClick={() => toggleSelect(p)} style={{ fontSize: 12, color: '#991b1b', background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>Remove</button>
+                      </div>
+                      {(p.email || p.phone) && (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+                          {p.email && <a href={`mailto:${p.email}?subject=${encodeURIComponent('Connecting via Tidal Care Network')}`} style={{ fontSize: 12, fontWeight: 500, color: teal, background: mint, padding: '5px 12px', borderRadius: 6, textDecoration: 'none' }}>Email</a>}
+                          {p.phone && <a href={`tel:${p.phone}`} style={{ fontSize: 12, fontWeight: 500, color: teal, background: mint, padding: '5px 12px', borderRadius: 6, textDecoration: 'none' }}>Call</a>}
+                          <Link href={`/provider/${p.id}`} style={{ fontSize: 12, color: '#888', padding: '5px 4px', textDecoration: 'none' }}>View profile →</Link>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -401,3 +583,12 @@ const selectStyle: React.CSSProperties = {
   backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', cursor: 'pointer',
 }
 const trayInp: React.CSSProperties = { width: '100%', padding: '9px 11px', fontSize: 13, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: 'white', marginBottom: 12 }
+const panel: React.CSSProperties = { position: 'absolute', top: '110%', left: 0, zIndex: 30, background: 'white', border: '1px solid #d4d2ca', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', width: 280, maxHeight: 360, overflowY: 'auto', padding: 12 }
+const panelHeader: React.CSSProperties = { display: 'flex', gap: 6, marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #f0f0f0' }
+const panelSecLabel: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#999', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }
+const checkRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: dark, cursor: 'pointer', padding: '2px 0' }
+const matchChip: React.CSSProperties = { fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 99, background: teal, color: 'white' }
+function modeBtn(on: boolean): React.CSSProperties {
+  return { fontSize: 12, padding: '4px 10px', borderRadius: 6, border: on ? `1.5px solid ${teal}` : '1px solid #d4d2ca', background: on ? mint : 'white', color: dark, cursor: 'pointer' }
+}
+const clearBtn: React.CSSProperties = { fontSize: 12, padding: '4px 8px', borderRadius: 6, border: 'none', background: 'none', color: '#991b1b', cursor: 'pointer', marginLeft: 'auto' }
