@@ -1,15 +1,17 @@
 import { NextResponse } from 'next/server'
-import { stripe, priceMeta } from '@/lib/stripe'
+import { getStripe, priceMeta } from '@/lib/stripe'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Stripe from 'stripe'
 
 // Stripe needs the raw, unparsed body to verify the signature.
 export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
   const body = await request.text()
   const sig = request.headers.get('stripe-signature')
   const secret = process.env.STRIPE_WEBHOOK_SECRET
+  const stripe = getStripe()
 
   if (!sig || !secret) {
     return NextResponse.json({ error: 'Missing signature or secret' }, { status: 400 })
@@ -42,10 +44,11 @@ export async function POST(request: Request) {
 
         if (providerId && subId) {
           // Pull the subscription to learn the price + period end.
-          const sub = await stripe.subscriptions.retrieve(subId)
+          const sub = await stripe.subscriptions.retrieve(subId) as unknown as Stripe.Subscription
           const priceId = sub.items.data[0]?.price?.id || null
           const meta = priceMeta(priceId)
-          const renews = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null
+          const periodEnd = (sub as unknown as { current_period_end?: number }).current_period_end
+          const renews = periodEnd ? new Date(periodEnd * 1000).toISOString() : null
 
           await admin.from('providers').update({
             is_premium: true,
@@ -68,7 +71,8 @@ export async function POST(request: Request) {
         if (providerId) {
           const priceId = sub.items.data[0]?.price?.id || null
           const meta = priceMeta(priceId)
-          const renews = sub.current_period_end ? new Date(sub.current_period_end * 1000).toISOString() : null
+          const periodEnd = (sub as unknown as { current_period_end?: number }).current_period_end
+          const renews = periodEnd ? new Date(periodEnd * 1000).toISOString() : null
           // active or trialing => premium on; past_due/unpaid/canceled => keep flag but reflect status
           const active = sub.status === 'active' || sub.status === 'trialing'
           await admin.from('providers').update({
