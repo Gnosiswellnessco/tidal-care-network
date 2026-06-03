@@ -115,8 +115,7 @@ export default async function DashboardPage() {
                         An enhanced profile with a photo gallery and intro video, a booking button on your card and profile, referral and profile analytics, and an optional supporter badge. Tools to help the right clients find you — your placement in the directory always stays based on merit.
                       </p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                        <button type="button" disabled style={{ fontSize: 13, fontWeight: 500, padding: '9px 20px', border: 'none', borderRadius: 8, background: PREMIUM_ACCENT, color: 'white', letterSpacing: '0.02em', cursor: 'not-allowed', opacity: 0.7 }}>Upgrade — $50/yr or $5/mo</button>
-                        <span style={{ fontSize: 12, color: '#aaa' }}>Payment setup coming soon</span>
+                        <Link href="/dashboard/premium" style={{ fontSize: 13, fontWeight: 500, padding: '9px 20px', border: 'none', borderRadius: 8, background: PREMIUM_ACCENT, color: 'white', letterSpacing: '0.02em', textDecoration: 'none' }}>Go Premium — $50/yr or $5/mo →</Link>
                       </div>
                     </div>
                   )}
