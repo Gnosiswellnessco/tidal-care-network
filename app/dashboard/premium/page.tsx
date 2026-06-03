@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import BrandLogo from '@/components/BrandLogo'
 import PremiumFeatures from '@/components/PremiumFeatures'
 import { isPremium, priceLabel, PREMIUM_ACCENT, PREMIUM_ACCENT_DARK } from '@/lib/subscription'
+import UpgradeButtons from '@/components/UpgradeButtons'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,10 +48,13 @@ export default async function PremiumPage() {
 
         {premium ? (
           <>
-            <p style={{ fontSize: 14, color: '#666', marginBottom: 20 }}>
-              {provider.subscription_price_cents != null ? `Active · ${priceLabel(provider)}` : 'Active'}
-              {provider.subscription_renews_at ? ` · renews ${new Date(provider.subscription_renews_at).toLocaleDateString()}` : ''}
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+              <p style={{ fontSize: 14, color: '#666', margin: 0 }}>
+                {provider.subscription_price_cents != null ? `Active · ${priceLabel(provider)}` : 'Active'}
+                {provider.subscription_renews_at ? ` · renews ${new Date(provider.subscription_renews_at).toLocaleDateString()}` : ''}
+              </p>
+              <UpgradeButtons mode="manage" />
+            </div>
             <PremiumFeatures
               providerId={provider.id}
               userId={user.id}
@@ -74,10 +78,7 @@ export default async function PremiumPage() {
             <p style={{ fontSize: 14, color: '#5f6b6d', lineHeight: 1.7, marginBottom: 18 }}>
               Upgrade to unlock an enhanced profile with a photo gallery and intro video, a booking button on your card and profile, an extended bio with custom links, and an optional supporter badge. These are tools to help the right clients find you — your placement in the directory always stays based on merit.
             </p>
-            <button type="button" disabled style={{ fontSize: 14, fontWeight: 500, padding: '11px 26px', border: 'none', borderRadius: 8, background: PREMIUM_ACCENT, color: 'white', letterSpacing: '0.02em', cursor: 'not-allowed', opacity: 0.7 }}>
-              Upgrade — $50/yr or $5/mo
-            </button>
-            <p style={{ fontSize: 12, color: '#aaa', marginTop: 10 }}>Payment setup coming soon.</p>
+            <UpgradeButtons mode="upgrade" />
           </div>
         )}
       </div>
