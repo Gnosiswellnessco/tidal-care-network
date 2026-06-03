@@ -110,7 +110,7 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
               </div>
               {showSupporter && (
                 <div style={{ marginTop: 12 }}>
-                  <img src="/Supporter.svg" alt="Network supporter" style={{ height: 30, width: 'auto', display: 'block' }} />
+                  <img src="/Supporter.svg" alt="Network supporter" style={{ height: 34, width: 'auto', display: 'block' }} />
                 </div>
               )}
             </div>

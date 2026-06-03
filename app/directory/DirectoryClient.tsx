@@ -407,7 +407,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Endorsed</strong> — vouched for by a peer provider</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <img src="/Supporter.svg" alt="Network supporter" style={{ height: 18, width: 'auto' }} />
+              <img src="/Supporter.svg" alt="Network supporter" style={{ height: 34, width: 'auto' }} />
               <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Supporter</strong> — helps fund the network; not a quality or ranking signal</span>
             </div>
           </div>
@@ -462,7 +462,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                   <img src="/vetted.svg" alt="Vetted" style={{ height: 20, width: 'auto', display: 'block' }} />
                   {p.is_endorsed && <img src="/endorsed.svg" alt="Peer endorsed" style={{ height: 20, width: 'auto', display: 'block' }} />}
-                  {supporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 20, width: 'auto', display: 'block' }} />}
+                  {supporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 34, width: 'auto', display: 'block' }} />}
                 </div>
 
                 <Link href={`/provider/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
