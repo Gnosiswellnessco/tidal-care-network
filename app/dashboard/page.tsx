@@ -95,7 +95,7 @@ export default async function DashboardPage() {
   )
 
   const endorsementsTab = <EndorsementRequest providerId={provider!.id} />
-  const referralTab = <ReferralSources providerId={provider!.id} />
+  const referralTab = <ReferralSources providerId={provider!.id} isPremium={premium} />
   const orgTab = <OrgManagement providerId={provider!.id} isOrg={!!provider!.is_org} />
 
   const tabs = [

@@ -19,6 +19,7 @@ type Provider = {
   photo_url: string | null
   primary_zip: string | null
   offers_telehealth: boolean
+  note: string | null
 }
 
 function displayName(p: Provider) {
@@ -31,13 +32,19 @@ function Label({ children }: { children: React.ReactNode }) {
   return <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#444', marginBottom: 6 }}>{children}</label>
 }
 
-export default function ReferralSources({ providerId }: { providerId: string }) {
+const PREMIUM = '#b5aa8e'
+const PREMIUM_DARK = '#7d7256'
+
+export default function ReferralSources({ providerId, isPremium = false }: { providerId: string; isPremium?: boolean }) {
   const [favorites, setFavorites] = useState<Provider[]>([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [search, setSearch] = useState('')
   const [results, setResults] = useState<Provider[]>([])
   const [searching, setSearching] = useState(false)
+  const [openNote, setOpenNote] = useState<string | null>(null)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [savingNote, setSavingNote] = useState(false)
 
   // Referral builder state
   const [checked, setChecked] = useState<Set<string>>(new Set())
@@ -54,17 +61,19 @@ export default function ReferralSources({ providerId }: { providerId: string }) 
     const supabase = createClient()
     const { data: favRows } = await supabase
       .from('provider_favorites')
-      .select('favorite_provider_id')
+      .select('favorite_provider_id, note')
       .eq('owner_provider_id', providerId)
 
     const ids = (favRows || []).map((r) => r.favorite_provider_id)
     if (ids.length === 0) { setFavorites([]); setLoading(false); return }
 
+    const noteById = new Map<string, string | null>((favRows || []).map((r) => [r.favorite_provider_id, r.note]))
+
     const { data: provs } = await supabase
       .from('providers')
       .select('id, full_name, credentials, practice_name, is_org, email, phone, photo_url, primary_zip, offers_telehealth')
       .in('id', ids)
-    setFavorites((provs as Provider[]) || [])
+    setFavorites(((provs as Omit<Provider, 'note'>[]) || []).map((p) => ({ ...p, note: noteById.get(p.id) ?? null })))
     setLoading(false)
   }, [providerId])
 
@@ -94,7 +103,7 @@ export default function ReferralSources({ providerId }: { providerId: string }) 
       favorite_provider_id: p.id,
     })
     if (!error) {
-      setFavorites((cur) => [...cur, p])
+      setFavorites((cur) => [...cur, { ...p, note: null }])
       setResults((cur) => cur.filter((r) => r.id !== p.id))
     }
   }
@@ -110,6 +119,26 @@ export default function ReferralSources({ providerId }: { providerId: string }) 
       setFavorites((cur) => cur.filter((f) => f.id !== id))
       setChecked((cur) => { const n = new Set(cur); n.delete(id); return n })
     }
+  }
+
+  function startNote(p: Provider) {
+    setOpenNote(p.id)
+    setNoteDraft(p.note || '')
+  }
+
+  async function saveNote(id: string) {
+    setSavingNote(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('provider_favorites')
+      .update({ note: noteDraft.trim() || null })
+      .eq('owner_provider_id', providerId)
+      .eq('favorite_provider_id', id)
+    if (!error) {
+      setFavorites((cur) => cur.map((f) => f.id === id ? { ...f, note: noteDraft.trim() || null } : f))
+      setOpenNote(null)
+    }
+    setSavingNote(false)
   }
 
   function toggleCheck(id: string) {
@@ -225,22 +254,55 @@ export default function ReferralSources({ providerId }: { providerId: string }) 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {favorites.map((p) => {
             const isChecked = checked.has(p.id)
+            const editing = openNote === p.id
             return (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: isChecked ? mint : 'white', borderRadius: 10, border: isChecked ? `1px solid ${teal}` : '1px solid #e5e3dc' }}>
-                <input type="checkbox" checked={isChecked} onChange={() => toggleCheck(p.id)} style={{ width: 18, height: 18, flexShrink: 0, cursor: 'pointer', accentColor: teal }} />
-                <div style={{ width: 42, height: 42, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: mint, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e5e3dc' }}>
-                  {p.photo_url ? <img src={p.photo_url} alt={displayName(p)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 16, fontWeight: 600, color: teal }}>{(p.full_name || '?').charAt(0).toUpperCase()}</span>}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: dark }}>{displayName(p)}</div>
-                  <div style={{ fontSize: 12, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {p.primary_zip ? p.primary_zip : ''}{p.offers_telehealth ? ' · Telehealth' : ''}
+              <div key={p.id} style={{ background: isChecked ? mint : 'white', borderRadius: 10, border: isChecked ? `1px solid ${teal}` : '1px solid #e5e3dc' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px' }}>
+                  <input type="checkbox" checked={isChecked} onChange={() => toggleCheck(p.id)} style={{ width: 18, height: 18, flexShrink: 0, cursor: 'pointer', accentColor: teal }} />
+                  <div style={{ width: 42, height: 42, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: mint, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e5e3dc' }}>
+                    {p.photo_url ? <img src={p.photo_url} alt={displayName(p)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 16, fontWeight: 600, color: teal }}>{(p.full_name || '?').charAt(0).toUpperCase()}</span>}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: dark }}>{displayName(p)}</div>
+                    <div style={{ fontSize: 12, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.primary_zip ? p.primary_zip : ''}{p.offers_telehealth ? ' · Telehealth' : ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
+                    {p.phone && <a href={`tel:${p.phone}`} title="Call" style={{ fontSize: 12, color: teal, textDecoration: 'none', padding: '5px 10px', border: '1px solid #d4d2ca', borderRadius: 6 }}>Call</a>}
+                    {p.email && <a href={`mailto:${p.email}`} title="Email" style={{ fontSize: 12, color: teal, textDecoration: 'none', padding: '5px 10px', border: '1px solid #d4d2ca', borderRadius: 6 }}>Email</a>}
+                    <button onClick={() => removeFavorite(p.id)} title="Remove" style={{ fontSize: 16, color: '#bbb', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}>×</button>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
-                  {p.phone && <a href={`tel:${p.phone}`} title="Call" style={{ fontSize: 12, color: teal, textDecoration: 'none', padding: '5px 10px', border: '1px solid #d4d2ca', borderRadius: 6 }}>Call</a>}
-                  {p.email && <a href={`mailto:${p.email}`} title="Email" style={{ fontSize: 12, color: teal, textDecoration: 'none', padding: '5px 10px', border: '1px solid #d4d2ca', borderRadius: 6 }}>Email</a>}
-                  <button onClick={() => removeFavorite(p.id)} title="Remove" style={{ fontSize: 16, color: '#bbb', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}>×</button>
+
+                {/* Notes region */}
+                <div style={{ padding: '0 14px 12px 44px' }}>
+                  {isPremium ? (
+                    editing ? (
+                      <div>
+                        <textarea
+                          value={noteDraft}
+                          onChange={(e) => setNoteDraft(e.target.value)}
+                          placeholder="Private note — e.g. great with teens, books ~3 weeks out, takes BCBS. Only you can see this."
+                          style={{ width: '100%', minHeight: 60, padding: '8px 10px', fontSize: 13, border: `1px solid ${PREMIUM}`, borderRadius: 8, color: '#1a1a1a', background: 'white', resize: 'vertical', boxSizing: 'border-box' }}
+                        />
+                        <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                          <button onClick={() => saveNote(p.id)} disabled={savingNote} style={{ fontSize: 12, fontWeight: 500, color: 'white', background: PREMIUM_DARK, border: 'none', padding: '6px 14px', borderRadius: 6, cursor: savingNote ? 'default' : 'pointer', opacity: savingNote ? 0.6 : 1 }}>{savingNote ? 'Saving…' : 'Save note'}</button>
+                          <button onClick={() => setOpenNote(null)} style={{ fontSize: 12, color: '#888', background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : p.note ? (
+                      <div onClick={() => startNote(p)} style={{ cursor: 'pointer', fontSize: 13, color: '#5a5346', background: '#efe9dc', borderRadius: 8, padding: '8px 10px', lineHeight: 1.5, whiteSpace: 'pre-wrap' }} title="Click to edit your private note">
+                        {p.note}
+                      </div>
+                    ) : (
+                      <button onClick={() => startNote(p)} style={{ fontSize: 12, color: PREMIUM_DARK, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>+ Add a private note</button>
+                    )
+                  ) : (
+                    <a href="/dashboard/premium" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: PREMIUM_DARK, textDecoration: 'none' }} title="Premium feature">
+                      <span style={{ fontSize: 11 }}>&#128274;</span> Add private notes with Premium &rarr;
+                    </a>
+                  )}
                 </div>
               </div>
             )
