@@ -132,9 +132,6 @@ export default async function DashboardPage() {
             </p>
             {approved && (
               <div style={{ display: 'flex', gap: 10, margin: '16px 0 28px', flexWrap: 'wrap' }}>
-                <Link href="/refer" style={{ display: 'inline-block', fontSize: 14, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
-                  Create a referral →
-                </Link>
                 <Link href="/dashboard/edit" style={{ display: 'inline-block', fontSize: 14, fontWeight: 500, color: '#3e6a70', background: 'white', border: '1px solid #3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
                   Edit profile
                 </Link>
