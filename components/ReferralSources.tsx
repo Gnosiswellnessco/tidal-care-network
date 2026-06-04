@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import QRCodeImage from '@/components/QRCode'
 
 const teal = '#3e6a70'
 const dark = '#2c4d52'
@@ -205,7 +206,16 @@ export default function ReferralSources({ providerId, isPremium = false }: { pro
             <input readOnly value={shareUrl} style={{ flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: '#faf9f5' }} />
             <button onClick={() => navigator.clipboard.writeText(shareUrl)} style={{ fontSize: 13, fontWeight: 500, padding: '10px 16px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: 'pointer' }}>Copy</button>
           </div>
-          <button onClick={resetBuilder} style={{ fontSize: 14, fontWeight: 500, color: 'white', background: teal, padding: '10px 22px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>Create another referral</button>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginBottom: 20 }}>
+            <QRCodeImage value={shareUrl} size={150} />
+            <p style={{ fontSize: 12, color: '#888', margin: 0 }}>Scan to open the referral</p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a href={`/r/${result.token}/print`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, fontWeight: 500, color: teal, background: 'white', border: `1px solid ${teal}`, padding: '10px 22px', borderRadius: 8, textDecoration: 'none' }}>Print / save PDF</a>
+            <button onClick={resetBuilder} style={{ fontSize: 14, fontWeight: 500, color: 'white', background: teal, padding: '10px 22px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>Create another referral</button>
+          </div>
         </div>
       </div>
     )
