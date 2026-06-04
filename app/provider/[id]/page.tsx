@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { CATEGORIES, TAGS } from '@/lib/taxonomy'
 import { RatingDisplay, RatingSubmit } from '@/components/RatingWidget'
 import { isPremium, showsSupporterBadge, hasBooking, bookingAction, PREMIUM_ACCENT } from '@/lib/subscription'
+import PeerRecommendButton from '@/components/PeerRecommendButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,6 +47,11 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
     .eq('status', 'confirmed')
 
   const isEndorsed = (endorsements?.length || 0) > 0
+
+  const { count: recommendCount } = await supabase
+    .from('peer_recommendations')
+    .select('id', { count: 'exact', head: true })
+    .eq('recommended_provider_id', id)
 
   const premium = isPremium(p)
   const showSupporter = showsSupporterBadge(p)
@@ -105,8 +111,15 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
               {p.availability_status === 'accepting' && (
                 <span style={{ display: 'inline-block', marginTop: 8, fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 6, background: '#eaf3de', color: '#27500a' }}>Accepting new clients</span>
               )}
-              <div style={{ marginTop: 8 }}>
+              <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <RatingDisplay avg={ratingAvg} count={ratingCount} size={18} />
+                {(recommendCount || 0) > 0 && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#3e6a70', background: '#e8eff0', padding: '4px 11px', borderRadius: 999 }}>
+                    <img src="/thumbs-up.svg" alt="" style={{ height: 15, width: 'auto', display: 'block' }} />
+                    {recommendCount} peer recommendation{recommendCount === 1 ? '' : 's'}
+                  </span>
+                )}
+                <PeerRecommendButton profileProviderId={id} />
               </div>
               {showSupporter && (
                 <div style={{ marginTop: 12 }}>
