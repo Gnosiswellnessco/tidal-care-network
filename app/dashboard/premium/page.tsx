@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import BrandLogo from '@/components/BrandLogo'
 import PremiumFeatures from '@/components/PremiumFeatures'
+import PremiumInsights from '@/components/PremiumInsights'
 import { isPremium, priceLabel, PREMIUM_ACCENT, PREMIUM_ACCENT_DARK } from '@/lib/subscription'
 import UpgradeButtons from '@/components/UpgradeButtons'
 
@@ -55,6 +56,7 @@ export default async function PremiumPage() {
               </p>
               <UpgradeButtons mode="manage" />
             </div>
+            <PremiumInsights providerId={provider.id} />
             <PremiumFeatures
               providerId={provider.id}
               userId={user.id}

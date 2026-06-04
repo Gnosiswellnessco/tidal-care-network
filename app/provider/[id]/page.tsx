@@ -5,6 +5,7 @@ import { CATEGORIES, TAGS } from '@/lib/taxonomy'
 import { RatingDisplay, RatingSubmit } from '@/components/RatingWidget'
 import { isPremium, showsSupporterBadge, hasBooking, bookingAction, PREMIUM_ACCENT } from '@/lib/subscription'
 import PeerRecommendButton from '@/components/PeerRecommendButton'
+import RecordProfileView from '@/components/RecordProfileView'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,6 +79,7 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
   const ratingAvg = ratingCount > 0 ? (ratingRows!.reduce((a, r) => a + r.stars, 0) / ratingCount) : null
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
+      <RecordProfileView providerId={id} />
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 900, margin: '0 auto' }}>
         <Link href="/"><img src="/tidal-care-network.svg" alt="Tidal Care Network" style={{ height: 180, width: 'auto' }} /></Link>
         <Link href="/directory" style={{ fontSize: 14, color: '#3e6a70', textDecoration: 'none' }}>← Back to directory</Link>
