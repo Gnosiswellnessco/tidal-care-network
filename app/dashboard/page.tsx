@@ -25,10 +25,10 @@ export default async function DashboardPage() {
     .select('id, full_name, vetting_status, is_org, is_premium, subscription_status, subscription_interval, subscription_price_cents, subscription_renews_at')
     .eq('user_id', user.id)
     .maybeSingle()
-      if (!provider) {
+
+  if (!provider) {
     redirect('/join')
   }
-
 
   const adminInfo = await getAdminInfo(user.email)
   const premium = isPremium(provider)
@@ -64,47 +64,12 @@ export default async function DashboardPage() {
     </div>
   )
 
-  const premiumTab = (
-    <div style={{ borderRadius: 10, border: '1px solid #e5e3dc', borderTop: '2px solid ' + PREMIUM_ACCENT, overflow: 'hidden' }}>
-      <div style={{ padding: '16px 18px', background: '#fcfbf8' }}>
-        {premium ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <span style={{ fontSize: 15, color: PREMIUM_ACCENT_DARK }}>★</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: '#2c4d52' }}>Tidal Care Premium</span>
-              </div>
-              <div style={{ fontSize: 12, color: '#888', marginTop: 3 }}>
-                Active{provider!.subscription_price_cents != null ? ` · ${priceLabel(provider)}` : ''}{provider!.subscription_renews_at ? ` · renews ${new Date(provider!.subscription_renews_at).toLocaleDateString()}` : ''}
-              </div>
-            </div>
-            <Link href="/dashboard/premium" style={{ fontSize: 12, padding: '7px 14px', border: '1px solid #d4d2ca', background: 'white', borderRadius: 8, color: '#5f6b6d', textDecoration: 'none' }}>Manage premium features</Link>
-          </div>
-        ) : (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
-              <span style={{ fontSize: 15, color: PREMIUM_ACCENT_DARK }}>★</span>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#2c4d52' }}>Tidal Care Premium</span>
-            </div>
-            <p style={{ fontSize: 13, color: '#5f6b6d', lineHeight: 1.7, margin: '0 0 14px' }}>
-              An enhanced profile with a photo gallery and intro video, a booking button on your card and profile, referral and profile analytics, and an optional supporter badge. Tools to help the right clients find you — your placement in the directory always stays based on merit.
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <Link href="/dashboard/premium" style={{ fontSize: 13, fontWeight: 500, padding: '9px 20px', border: 'none', borderRadius: 8, background: PREMIUM_ACCENT, color: 'white', letterSpacing: '0.02em', textDecoration: 'none' }}>Go Premium — $50/yr or $5/mo →</Link>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-
   const endorsementsTab = <EndorsementRequest providerId={provider!.id} />
   const referralTab = <ReferralSources providerId={provider!.id} isPremium={premium} />
   const orgTab = <OrgManagement providerId={provider!.id} isOrg={!!provider!.is_org} />
 
   const tabs = [
     { id: 'overview', label: 'Overview', content: overviewTab },
-    ...(approved ? [{ id: 'premium', label: 'Premium', content: premiumTab }] : []),
     { id: 'endorsements', label: 'Endorsements', content: endorsementsTab },
     { id: 'referrals', label: 'My Preferred Referral sources', content: referralTab },
     ...(provider?.is_org ? [{ id: 'org', label: 'Organization', content: orgTab }] : []),
@@ -138,6 +103,12 @@ export default async function DashboardPage() {
               <div style={{ display: 'flex', gap: 10, margin: '16px 0 28px', flexWrap: 'wrap' }}>
                 <Link href="/dashboard/edit" style={{ display: 'inline-block', fontSize: 14, fontWeight: 500, color: '#3e6a70', background: 'white', border: '1px solid #3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
                   Edit profile
+                </Link>
+                <Link href={`/provider/${provider.id}`} style={{ display: 'inline-block', fontSize: 14, fontWeight: 500, color: '#3e6a70', background: 'white', border: '1px solid #3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
+                  View my profile
+                </Link>
+                <Link href="/dashboard/premium" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 500, color: 'white', background: PREMIUM_ACCENT, padding: '10px 20px', borderRadius: 8, textDecoration: 'none', letterSpacing: '0.02em' }}>
+                  <span style={{ fontSize: 13 }}>★</span> Premium
                 </Link>
               </div>
             )}
