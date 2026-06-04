@@ -14,8 +14,8 @@ export function getStripe(): Stripe {
 
 // Price IDs for the two Premium plans (TEST mode values).
 // When you switch to live mode, replace these with the live price_… IDs.
-export const PRICE_MONTHLY = 'price_1TeIe0CXYW3pDzuWGdbfjRZ2' // $5/mo
-export const PRICE_YEARLY = 'price_1TeIe0CXYW3pDzuW8W1pStyH'  // $50/yr
+export const PRICE_MONTHLY = 'price_1TeMc7CXYW3pDzuWY3A45I2l' // $5/mo
+export const PRICE_YEARLY = 'price_1TeMc7CXYW3pDzuWY5E5b85l'  // $50/yr
 
 export function planFor(key: string): { price: string; cents: number; interval: 'month' | 'year' } | null {
   if (key === 'monthly') return { price: PRICE_MONTHLY, cents: 500, interval: 'month' }
