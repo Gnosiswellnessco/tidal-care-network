@@ -453,7 +453,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
         {view === 'map' ? (
           <DirectoryMap
             providers={filtered.filter((p) => p.map_lat != null && p.map_lng != null).map((p) => ({
-              id: p.id, full_name: p.full_name, practice_name: p.practice_name, is_org: p.is_org, credentials: p.credentials,
+              id: p.id, full_name: p.full_name, practice_name: p.practice_name, is_org: p.is_org, credentials: p.credentials, photo_url: p.photo_url,
               latitude: p.map_lat as number, longitude: p.map_lng as number, label: p.map_label ?? null, visibility: p.map_visibility ?? 'full',
               categories: p.provider_categories.map((c) => categoryLabel(c.category)),
               tags: p.provider_tags.map((t) => t.tag_value),

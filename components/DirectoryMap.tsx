@@ -8,6 +8,7 @@ type MapProvider = {
   credentials: string | null
   practice_name: string | null
   is_org: boolean
+  photo_url: string | null
   latitude: number
   longitude: number
   label: string | null
@@ -19,6 +20,7 @@ type MapProvider = {
 
 const teal = '#3e6a70'
 const dark = '#2c4d52'
+const mint = '#e8eff0'
 
 function esc(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -89,6 +91,10 @@ export default function DirectoryMap({
     const title = p.is_org
       ? (p.practice_name || p.full_name)
       : `${p.full_name}${p.credentials ? ', ' + p.credentials : ''}`
+    const initial = esc((p.full_name || '?').charAt(0).toUpperCase())
+    const avatar = p.photo_url
+      ? `<div style="width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;border:1px solid #e5e3dc;"><img src="${esc(p.photo_url)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" /></div>`
+      : `<div style="width:44px;height:44px;border-radius:50%;flex-shrink:0;background:${mint};border:1px solid #e5e3dc;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:${teal};">${initial}</div>`
     const practice = p.practice_name && !p.is_org
       ? `<div style="font-size:12px;color:#888;margin-bottom:6px;">${esc(p.practice_name)}</div>`
       : ''
@@ -105,7 +111,10 @@ export default function DirectoryMap({
     const addBtn = `<button id="tcn-add-${p.id}" ${already ? 'disabled' : ''} style="font-size:12px;font-weight:600;padding:7px 12px;border-radius:8px;border:none;background:${already ? '#9bb7ba' : teal};color:white;cursor:${already ? 'default' : 'pointer'};">${already ? 'Added \u2713' : '+ Add to referral'}</button>`
     const viewLink = `<a href="/provider/${p.id}" style="font-size:12px;font-weight:600;color:${teal};text-decoration:none;padding:7px 4px;">View profile \u2192</a>`
     return `<div style="font-family:system-ui,-apple-system,sans-serif;max-width:240px;padding:2px 2px 4px;">
-      <div style="font-size:15px;font-weight:700;color:${dark};margin-bottom:2px;">${esc(title)}</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        ${avatar}
+        <div style="font-size:15px;font-weight:700;color:${dark};line-height:1.3;">${esc(title)}</div>
+      </div>
       ${practice}${cats}${tags}${bioSnippet}
       <div style="display:flex;align-items:center;gap:8px;">${addBtn}${viewLink}</div>
     </div>`
