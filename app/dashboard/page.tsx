@@ -102,7 +102,7 @@ export default async function DashboardPage() {
     { id: 'overview', label: 'Overview', content: overviewTab },
     ...(approved ? [{ id: 'premium', label: 'Premium', content: premiumTab }] : []),
     { id: 'endorsements', label: 'Endorsements', content: endorsementsTab },
-    { id: 'referrals', label: 'Referral Sources', content: referralTab },
+    { id: 'referrals', label: 'My Preferred Referral sources', content: referralTab },
     ...(provider?.is_org ? [{ id: 'org', label: 'Organization', content: orgTab }] : []),
   ]
 
