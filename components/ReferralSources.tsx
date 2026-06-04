@@ -48,7 +48,6 @@ export default function ReferralSources({ providerId, isPremium = false }: { pro
 
   // Referral builder state
   const [checked, setChecked] = useState<Set<string>>(new Set())
-  const [type, setType] = useState<'provider' | 'client'>('client')
   const [roi, setRoi] = useState(false)
   const [note, setNote] = useState('')
   const [clientName, setClientName] = useState('')
@@ -154,26 +153,25 @@ export default function ReferralSources({ providerId, isPremium = false }: { pro
   async function handleSend() {
     setError('')
     if (selectedProviders.length === 0) { setError('Check at least one provider to refer.'); return }
-    if (type === 'provider' && selectedProviders.length > 1) { setError('A warm handoff goes to a single provider. Select just one, or switch to a client referral.'); return }
-    if (type === 'client' && !clientName.trim()) { setError('Enter the client name (or a private label) for this referral.'); return }
+    if (!clientName.trim()) { setError('Enter the client name (or a private label) for this referral.'); return }
     setSending(true)
     const supabase = createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('You must be signed in to send referrals.'); setSending(false); return }
 
-    const token = type === 'client' ? crypto.randomUUID().replace(/-/g, '') : null
+    const token = crypto.randomUUID().replace(/-/g, '')
 
     const { data: referral, error: refErr } = await supabase
       .from('referrals')
       .insert({
         from_provider_id: providerId,
-        to_provider_id: type === 'provider' ? selectedProviders[0].id : null,
-        referral_type: type,
+        to_provider_id: null,
+        referral_type: 'client',
         roi_requested: roi,
         note: note || null,
-        client_name: type === 'client' ? clientName : null,
-        client_email: type === 'client' ? (clientEmail || null) : null,
+        client_name: clientName,
+        client_email: clientEmail || null,
         share_token: token,
         status: 'sent',
       })
@@ -187,32 +185,26 @@ export default function ReferralSources({ providerId, isPremium = false }: { pro
     )
 
     setSending(false)
-    setResult({ token: token || '', names: selectedProviders.map(displayName) })
+    setResult({ token, names: selectedProviders.map(displayName) })
   }
 
   function resetBuilder() {
-    setResult(null); setChecked(new Set()); setNote(''); setClientName(''); setClientEmail(''); setRoi(false); setType('client')
+    setResult(null); setChecked(new Set()); setNote(''); setClientName(''); setClientEmail(''); setRoi(false)
   }
 
   // --- Result screen ---
   if (result) {
-    const shareUrl = result.token ? `${typeof window !== 'undefined' ? window.location.origin : ''}/r/${result.token}` : ''
+    const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/r/${result.token}`
     return (
       <div>
         <div style={{ background: 'white', borderRadius: 14, border: '1px solid #e5e3dc', padding: 28, textAlign: 'center' }}>
           <div style={{ fontSize: 36, marginBottom: 10 }}>✓</div>
           <h2 style={{ fontSize: 20, fontWeight: 700, color: dark, marginBottom: 8 }}>Referral created</h2>
-          {result.token ? (
-            <>
-              <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, marginBottom: 18 }}>Share this link{clientName ? ` with ${clientName}` : ''} so they can view the recommended provider{result.names.length > 1 ? 's' : ''} and reach out.</p>
-              <div style={{ display: 'flex', gap: 8, maxWidth: 460, margin: '0 auto 18px' }}>
-                <input readOnly value={shareUrl} style={{ flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: '#faf9f5' }} />
-                <button onClick={() => navigator.clipboard.writeText(shareUrl)} style={{ fontSize: 13, fontWeight: 500, padding: '10px 16px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: 'pointer' }}>Copy</button>
-              </div>
-            </>
-          ) : (
-            <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, marginBottom: 18 }}>Your warm handoff to {result.names[0]} has been recorded. They&apos;ll be notified.</p>
-          )}
+          <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, marginBottom: 18 }}>Share this link{clientName ? ` with ${clientName}` : ''} so they can view the recommended provider{result.names.length > 1 ? 's' : ''} and reach out.</p>
+          <div style={{ display: 'flex', gap: 8, maxWidth: 460, margin: '0 auto 18px' }}>
+            <input readOnly value={shareUrl} style={{ flex: 1, padding: '10px 12px', fontSize: 13, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: '#faf9f5' }} />
+            <button onClick={() => navigator.clipboard.writeText(shareUrl)} style={{ fontSize: 13, fontWeight: 500, padding: '10px 16px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: 'pointer' }}>Copy</button>
+          </div>
           <button onClick={resetBuilder} style={{ fontSize: 14, fontWeight: 500, color: 'white', background: teal, padding: '10px 22px', borderRadius: 8, border: 'none', cursor: 'pointer' }}>Create another referral</button>
         </div>
       </div>
@@ -270,7 +262,7 @@ export default function ReferralSources({ providerId, isPremium = false }: { pro
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
                     {p.phone && <a href={`tel:${p.phone}`} title="Call" style={{ fontSize: 12, color: teal, textDecoration: 'none', padding: '5px 10px', border: '1px solid #d4d2ca', borderRadius: 6 }}>Call</a>}
-                    {p.email && <a href={`mailto:${p.email}`} title="Email" style={{ fontSize: 12, color: teal, textDecoration: 'none', padding: '5px 10px', border: '1px solid #d4d2ca', borderRadius: 6 }}>Email</a>}
+                    {p.email && <a href={`mailto:${p.email}?subject=${encodeURIComponent('Consult request via Tidal Care Network')}`} title="Email this colleague to consult" style={{ fontSize: 12, color: teal, textDecoration: 'none', padding: '5px 10px', border: '1px solid #d4d2ca', borderRadius: 6 }}>Request consult</a>}
                     <button onClick={() => removeFavorite(p.id)} title="Remove" style={{ fontSize: 16, color: '#bbb', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}>×</button>
                   </div>
                 </div>
@@ -320,29 +312,13 @@ export default function ReferralSources({ providerId, isPremium = false }: { pro
               : `${selectedProviders.length} selected: ${selectedProviders.map(displayName).join(', ')}`}
           </p>
 
-          <Label>Referral type</Label>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
-            <button onClick={() => setType('client')} style={{ flex: 1, textAlign: 'left', padding: '12px 14px', borderRadius: 10, cursor: 'pointer', border: type === 'client' ? `2px solid ${teal}` : '1px solid #d4d2ca', background: type === 'client' ? mint : 'white' }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: type === 'client' ? dark : '#333' }}>Send to a client</div>
-              <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>Share provider info with your client to choose</div>
-            </button>
-            <button onClick={() => setType('provider')} style={{ flex: 1, textAlign: 'left', padding: '12px 14px', borderRadius: 10, cursor: 'pointer', border: type === 'provider' ? `2px solid ${teal}` : '1px solid #d4d2ca', background: type === 'provider' ? mint : 'white' }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: type === 'provider' ? dark : '#333' }}>Warm handoff</div>
-              <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>Refer directly to one provider</div>
-            </button>
-          </div>
-
-          {type === 'client' && (
-            <>
-              <Label>Client name (or a private label)</Label>
-              <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="e.g. Jordan M." style={inp} />
-              <Label>Client email (optional — to email them the link)</Label>
-              <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} type="email" placeholder="client@example.com" style={inp} />
-            </>
-          )}
+          <Label>Client name (or a private label)</Label>
+          <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="e.g. Jordan M." style={inp} />
+          <Label>Client email (optional — to email them the link)</Label>
+          <input value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} type="email" placeholder="client@example.com" style={inp} />
 
           <Label>Note (optional)</Label>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder={type === 'client' ? 'A short note for your client about these recommendations.' : 'Context for the receiving provider. Do not include detailed health information here.'} style={{ ...inp, minHeight: 70, resize: 'vertical' }} />
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="A short note for your client about these recommendations." style={{ ...inp, minHeight: 70, resize: 'vertical' }} />
 
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: dark, cursor: 'pointer', marginBottom: 18 }}>
             <input type="checkbox" checked={roi} onChange={(e) => setRoi(e.target.checked)} style={{ accentColor: teal }} />
@@ -352,7 +328,7 @@ export default function ReferralSources({ providerId, isPremium = false }: { pro
           {error && <p style={{ fontSize: 14, color: '#b91c1c', marginBottom: 12 }}>{error}</p>}
 
           <button onClick={handleSend} disabled={sending} style={{ fontSize: 14, fontWeight: 500, padding: '11px 24px', borderRadius: 8, border: 'none', background: teal, color: 'white', cursor: sending ? 'default' : 'pointer', opacity: sending ? 0.6 : 1 }}>
-            {sending ? 'Creating…' : type === 'client' ? 'Create referral & get link' : 'Send warm handoff'}
+            {sending ? 'Creating…' : 'Create referral & get link'}
           </button>
         </div>
       )}
