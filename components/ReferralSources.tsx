@@ -63,6 +63,15 @@ export default function ReferralSources({ providerId, isPremium = false }: { pro
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<{ token: string; names: string[] } | null>(null)
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+
+  function toggleCollapse(label: string) {
+    setCollapsed((cur) => {
+      const n = new Set(cur)
+      if (n.has(label)) n.delete(label); else n.add(label)
+      return n
+    })
+  }
 
   const loadFavorites = useCallback(async () => {
     const supabase = createClient()
@@ -311,9 +320,21 @@ export default function ReferralSources({ providerId, isPremium = false }: { pro
         <p style={{ fontSize: 13, color: '#aaa', padding: '16px 0' }}>No referral sources yet. Tap &ldquo;+ Add&rdquo; to build your list.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {groupedFavorites().map((group) => (
+          {groupedFavorites().map((group) => {
+            const isCollapsed = collapsed.has(group.label)
+            return (
             <div key={group.label}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>{group.label}</div>
+              <button
+                type="button"
+                onClick={() => toggleCollapse(group.label)}
+                aria-expanded={!isCollapsed}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', background: 'none', border: 'none', padding: '4px 0', marginBottom: 8, cursor: 'pointer', textAlign: 'left' }}
+              >
+                <span style={{ fontSize: 11, color: '#aaa', transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)', transition: 'transform 0.15s', display: 'inline-block' }}>&#9654;</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{group.label}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#bbb' }}>({group.items.length})</span>
+              </button>
+              {!isCollapsed && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {group.items.map((p) => {
                   const isChecked = checked.has(p.id)
@@ -371,8 +392,9 @@ export default function ReferralSources({ providerId, isPremium = false }: { pro
                   )
                 })}
               </div>
+              )}
             </div>
-          ))}
+          )})}
         </div>
       )}
 
