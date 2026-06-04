@@ -25,6 +25,10 @@ export default async function DashboardPage() {
     .select('id, full_name, vetting_status, is_org, is_premium, subscription_status, subscription_interval, subscription_price_cents, subscription_renews_at')
     .eq('user_id', user.id)
     .maybeSingle()
+      if (!provider) {
+    redirect('/join')
+  }
+
 
   const adminInfo = await getAdminInfo(user.email)
   const premium = isPremium(provider)
