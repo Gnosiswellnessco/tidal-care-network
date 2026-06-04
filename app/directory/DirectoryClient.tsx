@@ -31,6 +31,7 @@ type Provider = {
   is_endorsed?: boolean
   rating_avg?: number | null
   rating_count?: number
+  peer_rec_count?: number
   map_lat?: number | null
   map_lng?: number | null
   map_label?: string | null
@@ -70,6 +71,10 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   const [copied, setCopied] = useState(false)
   const [myProviderId, setMyProviderId] = useState<string | null>(null)
   const [favorites, setFavorites] = useState<string[]>([])
+  const [canRecommend, setCanRecommend] = useState(false)
+  const [recommended, setRecommended] = useState<string[]>([])
+  const [recCounts, setRecCounts] = useState<Record<string, number>>({})
+  const [recBusy, setRecBusy] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'map'>('list')
 
   const specRef = useRef<HTMLDivElement>(null)
@@ -92,11 +97,14 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
-      const { data: me } = await supabase.from('providers').select('id').eq('user_id', user.id).maybeSingle()
+      const { data: me } = await supabase.from('providers').select('id, vetting_status, is_active').eq('user_id', user.id).maybeSingle()
       if (!me) return
       setMyProviderId(me.id)
+      setCanRecommend(me.vetting_status === 'approved' && me.is_active !== false)
       const { data: favs } = await supabase.from('provider_favorites').select('favorite_provider_id').eq('owner_provider_id', me.id)
       setFavorites((favs || []).map((f) => f.favorite_provider_id))
+      const { data: myRecs } = await supabase.from('peer_recommendations').select('recommended_provider_id').eq('recommender_provider_id', me.id)
+      setRecommended((myRecs || []).map((r) => r.recommended_provider_id))
     })
   }, [])
 
@@ -120,6 +128,28 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
       await supabase.from('provider_favorites').insert({ owner_provider_id: myProviderId, favorite_provider_id: targetId })
       setFavorites((cur) => [...cur, targetId])
     }
+  }
+
+  async function toggleRecommend(targetId: string) {
+    if (!myProviderId || !canRecommend || recBusy) return
+    setRecBusy(targetId)
+    const supabase = createClient()
+    const already = recommended.includes(targetId)
+    const baseCount = recCounts[targetId] ?? (providers.find((p) => p.id === targetId)?.peer_rec_count ?? 0)
+    if (already) {
+      const { error } = await supabase.from('peer_recommendations').delete().eq('recommender_provider_id', myProviderId).eq('recommended_provider_id', targetId)
+      if (!error) {
+        setRecommended((cur) => cur.filter((id) => id !== targetId))
+        setRecCounts((cur) => ({ ...cur, [targetId]: Math.max(0, baseCount - 1) }))
+      }
+    } else {
+      const { error } = await supabase.from('peer_recommendations').insert({ recommender_provider_id: myProviderId, recommended_provider_id: targetId })
+      if (!error) {
+        setRecommended((cur) => [...cur, targetId])
+        setRecCounts((cur) => ({ ...cur, [targetId]: baseCount + 1 }))
+      }
+    }
+    setRecBusy(null)
   }
 
   const specialtySections = useMemo(() => {
@@ -446,6 +476,8 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               const primaryCat = p.provider_categories.find((c) => c.is_primary)?.category || p.provider_categories[0]?.category
               const supporter = showsSupporterBadge(p)
               const booking = hasBooking(p) ? bookingAction(p) : null
+              const recCount = recCounts[p.id] ?? p.peer_rec_count ?? 0
+              const isRec = recommended.includes(p.id)
               return (
               <div key={p.id} style={{ background: 'white', borderRadius: 12, border: isSelected(p.id) ? `2px solid ${teal}` : '1px solid #e5e3dc', padding: 24, position: 'relative' }}>
                 <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -493,10 +525,25 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                     {(p.provider_insurance || []).length > 2 && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: '#f1efe8', color: '#999' }}>+{(p.provider_insurance || []).length - 2} more</span>}
                   </div>
 
-                  <div style={{ marginTop: 8 }}>
+                  <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <RatingDisplay avg={p.rating_avg ?? null} count={p.rating_count ?? 0} size={14} />
+                    {recCount > 0 && (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: teal, background: mint, padding: '3px 9px', borderRadius: 999 }}>
+                        <img src="/thumbs-up.svg" alt="" style={{ height: 13, width: 'auto', display: 'block' }} />
+                        {recCount}
+                      </span>
+                    )}
                   </div>
                 </Link>
+
+                {canRecommend && myProviderId !== p.id && (
+                  <button onClick={() => toggleRecommend(p.id)} disabled={recBusy === p.id}
+                    title={isRec ? 'Remove your recommendation' : 'Recommend this provider to colleagues'}
+                    style={{ marginTop: 12, marginRight: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: isRec ? 'white' : teal, background: isRec ? teal : 'white', border: '1px solid ' + teal, padding: '7px 14px', borderRadius: 999, cursor: recBusy === p.id ? 'default' : 'pointer', opacity: recBusy === p.id ? 0.6 : 1 }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={isRec ? 'white' : teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v11"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                    {isRec ? 'Recommended' : 'Recommend'}
+                  </button>
+                )}
 
                 {booking && (
                   <a href={booking.href} target={p.booking_type === 'link' ? '_blank' : undefined} rel={p.booking_type === 'link' ? 'noopener noreferrer' : undefined}

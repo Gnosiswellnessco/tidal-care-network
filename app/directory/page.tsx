@@ -42,6 +42,11 @@ export default async function DirectoryPage() {
     .select('provider_id, stars')
     .in('provider_id', safeIds)
 
+    const { data: peerRecs } = await supabase
+    .from('peer_recommendations')
+    .select('recommended_provider_id')
+    .in('recommended_provider_id', safeIds)
+
   const { data: addresses } = await supabase
     .from('provider_addresses')
     .select('provider_id, label, latitude, longitude, visibility, is_primary')
