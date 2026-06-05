@@ -50,12 +50,43 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* What it is */}
+      {/* Looking for care? — consumer entry point */}
       <section style={{ maxWidth: 900, margin: '0 auto', padding: '40px 32px 8px' }}>
+        <div style={{ background: BRAND.cardBg, borderRadius: 16, border: '0.5px solid ' + BRAND.hairline, padding: '36px 44px' }}>
+          <div style={{ display: 'flex', gap: 36, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ flex: '1 1 340px' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: BRAND.champagneDark, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>Looking for care?</div>
+              <h2 style={{ fontFamily: SERIF, fontSize: 25, fontWeight: 600, marginBottom: 12, color: BRAND.dark, letterSpacing: '-0.01em' }}>Find the right provider for you or someone you love</h2>
+              <p style={{ fontSize: 16, lineHeight: 1.75, color: '#444', margin: '0 0 20px' }}>
+                Anyone can search the network — it&apos;s completely free, and you don&apos;t need an account. Browse vetted providers by specialty, insurance, location, telehealth, and the communities they serve, then reach out to them directly.
+              </p>
+              <Link href="/directory" style={{ display: 'inline-block', fontSize: 15, fontWeight: 500, color: 'white', background: BRAND.teal, padding: '12px 26px', borderRadius: 10, textDecoration: 'none' }}>Find a provider</Link>
+            </div>
+            <div style={{ flex: '0 1 240px' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#7d8a87', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Search by what matters</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {['Therapy', 'Psychiatry', 'Primary care', 'Nutrition', 'Recovery', 'Telehealth', 'Insurance', 'Near you'].map((t) => (
+                  <span key={t} style={{ fontSize: 13, fontWeight: 500, padding: '6px 12px', borderRadius: 99, background: BRAND.mint, color: BRAND.dark }}>{t}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Crisis safety line */}
+          <div style={{ background: '#fbeef0', border: '1px solid #f3c9d0', borderRadius: 10, padding: '12px 16px', marginTop: 24 }}>
+            <p style={{ fontSize: 13, color: '#7a2230', lineHeight: 1.6, margin: 0 }}>
+              <strong>In a crisis, this directory isn&apos;t the right tool.</strong> If you or someone else is in danger, call <strong>911</strong>. For mental health or suicidal crisis, call or text <strong>988</strong> (Suicide &amp; Crisis Lifeline), available 24/7, or go to your nearest emergency room.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* What it is */}
+      <section style={{ maxWidth: 900, margin: '0 auto', padding: '24px 32px 8px' }}>
         <div style={{ background: BRAND.cardBg, borderRadius: 16, border: '0.5px solid ' + BRAND.hairline, padding: '36px 44px' }}>
           <h2 style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600, marginBottom: 14, color: BRAND.dark }}>What is Tidal Care Network?</h2>
           <p style={{ fontSize: 16, lineHeight: 1.75, color: '#444', margin: 0 }}>
-            A free, community-based referral network for licensed clinicians, holistic and integrative practitioners, and allied health professionals. Rooted in Charleston and serving the Lowcountry and South Carolina, we make it easier for providers to connect their clients to trusted, vetted colleagues across every dimension of wellness — mental health, psychiatry, primary and specialty medical care, nutrition, addiction recovery, bodywork, peer support, and more.
+            A free, community-based referral network for licensed clinicians, holistic and integrative practitioners, and allied health professionals. Rooted in Charleston and serving the Lowcountry and South Carolina, we make it easier for people to find trusted, vetted care — and for providers to connect their clients to colleagues across every dimension of wellness: mental health, psychiatry, primary and specialty medical care, nutrition, addiction recovery, bodywork, peer support, and more.
           </p>
         </div>
       </section>
@@ -66,8 +97,8 @@ export default async function HomePage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
           {[
             { n: '1', t: 'Providers join & get vetted', d: 'Licensed and credentialed providers apply, verify their credentials, sign our ethics commitments, and are vouched for by a professional colleague.' },
-            { n: '2', t: 'Search & smart match', d: 'Find the right provider by specialty, insurance, location, cultural fit, and the specific needs of your client — across every type of care.' },
-            { n: '3', t: 'Access consults', d: 'Connect with a vetted colleague to talk through a client\u2019s needs and find the right next step.' },
+            { n: '2', t: 'Search & smart match', d: 'Anyone — a person seeking care or a provider making a referral — can find the right match by specialty, insurance, location, cultural fit, and specific needs.' },
+            { n: '3', t: 'Connect directly', d: 'Reach out to a vetted provider to ask about availability and next steps, or talk through a client\u2019s needs as a colleague.' },
             { n: '4', t: 'Build trusted connections', d: 'Rate referral experiences, keep availability current, and strengthen a network of care across the community.' },
           ].map((step) => (
             <div key={step.n} style={{ background: BRAND.cardBg, borderRadius: 12, border: '0.5px solid ' + BRAND.hairline, padding: 24 }}>

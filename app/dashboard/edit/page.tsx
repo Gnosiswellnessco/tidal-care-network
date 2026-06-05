@@ -509,7 +509,7 @@ export default function EditProfilePage() {
                     {uploadingPhoto ? 'Uploading…' : photoUrl ? 'Change photo' : 'Upload photo'}
                     <input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploadingPhoto} style={{ display: 'none' }} />
                   </label>
-                  <p style={{ fontSize: 11, color: '#888', marginTop: 6, lineHeight: 1.5, maxWidth: 300 }}>Square images work best. Max 5MB.</p>
+                  <p style={{ fontSize: 11, color: '#888', marginTop: 6, lineHeight: 1.5, maxWidth: 300 }}>A clear, well-lit photo of your face — or a clean logo — builds trust and earns more clicks from people deciding who to reach out to. Face the camera, use natural light, and skip heavy filters. Square images work best. Max 5MB.</p>
                 </div>
               </div>
             </Field>
