@@ -96,8 +96,6 @@ export default async function DashboardPage() {
 
       <PremiumInsights providerId={provider!.id} />
 
-      <PostComposer providerId={provider!.id} userId={user.id} />
-
       <PremiumFeatures
         providerId={provider!.id}
         userId={user.id}
@@ -139,9 +137,41 @@ export default async function DashboardPage() {
   const referralTab = <ReferralSources providerId={provider!.id} isPremium={premium} />
   const orgTab = <OrgManagement providerId={provider!.id} isOrg={!!provider!.is_org} />
 
+  const newsTab = premium ? (
+    <PostComposer providerId={provider!.id} userId={user.id} />
+  ) : (
+    <div style={{ borderRadius: 10, border: '1px solid #e5e3dc', borderTop: '2px solid ' + PREMIUM_ACCENT, overflow: 'hidden' }}>
+      <div style={{ padding: '18px 20px', background: '#fcfbf8' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 15 }}>🔒</span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: '#2c4d52' }}>Post News &amp; Updates</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: PREMIUM_ACCENT_DARK, background: '#efe9dc', padding: '2px 9px', borderRadius: 99, letterSpacing: '0.04em' }}>PREMIUM</span>
+        </div>
+        <p style={{ fontSize: 13, color: '#5f6b6d', lineHeight: 1.7, margin: '0 0 14px' }}>
+          Share news, events, announcements, and resources on the public Tidal Care updates page — seen by everyone browsing the network, and easy for people to pass along.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+          {([['News', '#3e6a70'], ['Event', '#b5aa8e'], ['Announcement', '#e8b54a'], ['Resource', '#5ba1a9']] as const).map(([label, color]) => (
+            <span key={label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#444', background: 'white', border: '1px solid #e5e3dc', padding: '6px 12px', borderRadius: 999 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: color }} />{label}
+            </span>
+          ))}
+        </div>
+        <p style={{ fontSize: 12, color: '#888', lineHeight: 1.6, margin: '0 0 16px' }}>
+          Upgrade to Premium to start posting. Your placement in the directory always stays based on merit — Premium never affects where you appear.
+        </p>
+        <UpgradeButtons mode="upgrade" />
+        <div style={{ marginTop: 14 }}>
+          <a href="/news" target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#3e6a70', textDecoration: 'none' }}>See the public updates page →</a>
+        </div>
+      </div>
+    </div>
+  )
+
   const tabs = [
     { id: 'overview', label: 'Overview', content: overviewTab },
     ...(approved ? [{ id: 'premium', label: 'Premium', content: premiumTab }] : []),
+    { id: 'news', label: 'Post News & Updates', content: newsTab },
     { id: 'endorsements', label: 'Endorsements', content: endorsementsTab },
     { id: 'referrals', label: 'My Preferred Referral sources', content: referralTab },
     ...(provider?.is_org ? [{ id: 'org', label: 'Organization', content: orgTab }] : []),
