@@ -9,6 +9,7 @@ import OrgManagement from '@/components/OrgManagement'
 import DashboardTabs from '@/components/DashboardTabs'
 import PremiumFeatures from '@/components/PremiumFeatures'
 import PremiumInsights from '@/components/PremiumInsights'
+import PostComposer from '@/components/PostComposer'
 import UpgradeButtons from '@/components/UpgradeButtons'
 import { getAdminInfo } from '@/lib/admin-auth'
 import { isPremium, priceLabel, PREMIUM_ACCENT, PREMIUM_ACCENT_DARK } from '@/lib/subscription'
@@ -94,6 +95,8 @@ export default async function DashboardPage() {
       </div>
 
       <PremiumInsights providerId={provider!.id} />
+
+      <PostComposer providerId={provider!.id} userId={user.id} />
 
       <PremiumFeatures
         providerId={provider!.id}
