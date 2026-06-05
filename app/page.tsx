@@ -22,6 +22,7 @@ export default async function HomePage() {
         </div>
         <nav style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
           <Link href="/directory" style={{ fontSize: 15, color: '#2c4d52', textDecoration: 'none' }}>Find a provider</Link>
+          <Link href="/news" style={{ fontSize: 15, color: '#2c4d52', textDecoration: 'none' }}>News</Link>
           {loggedIn ? (
             <>
               <Link href="/dashboard" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>My dashboard</Link>
@@ -92,7 +93,7 @@ export default async function HomePage() {
         <div style={{ background: '#E1F5EE', borderRadius: 16, padding: '32px 48px', textAlign: 'center' }}>
           <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 12, color: '#085041' }}>Care that sees the whole person</h2>
           <p style={{ fontSize: 15, lineHeight: 1.7, color: '#0a5a48' }}>
-            Every provider commits to cultural competence, anti-discriminatory practice, affirming care for LGBTQ+ individuals, trauma-informed approaches, and ongoing professional growth. These aren't boxes to check — they're the foundation of how we believe care should be delivered.
+            Every provider commits to cultural competence, anti-discriminatory practice, affirming care for LGBTQ+ individuals, trauma-informed approaches, and ongoing professional growth. These aren&apos;t boxes to check — they&apos;re the foundation of how we believe care should be delivered.
           </p>
         </div>
       </section>

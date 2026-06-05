@@ -10,6 +10,7 @@ export default function Footer() {
           © {new Date().getFullYear()} Tidal Care Network · Administered by Gnosis Wellness Collective
         </div>
         <nav style={{ display: 'flex', flexWrap: 'wrap', gap: 18, fontSize: 13 }}>
+          <Link href="/news" style={{ color: teal, textDecoration: 'none' }}>News</Link>
           <Link href="/terms-of-participation" style={{ color: teal, textDecoration: 'none' }}>Provider Terms</Link>
           <Link href="/ethics" style={{ color: teal, textDecoration: 'none' }}>Ethics Agreement</Link>
           <Link href="/privacy" style={{ color: teal, textDecoration: 'none' }}>Privacy Policy</Link>
