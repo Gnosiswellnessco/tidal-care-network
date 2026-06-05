@@ -15,9 +15,8 @@ const teal = BRAND.teal
 const dark = BRAND.dark
 const mint = BRAND.mint
 const hairline = BRAND.hairline
+const champagne = BRAND.champagne
 const cardShadow = '0 1px 3px rgba(44,77,82,0.05)'
-const pill: React.CSSProperties = { fontSize: 12, fontWeight: 500, padding: '4px 11px', borderRadius: 99, background: 'white', border: '0.5px solid ' + hairline, color: '#5f6b6d' }
-const chipAccent: React.CSSProperties = { fontSize: 12, fontWeight: 600, padding: '4px 11px', borderRadius: 99, background: mint, color: dark }
 
 function categoryLabel(key: string) {
   return CATEGORIES.find((c) => c.key === key)?.label || key
@@ -87,6 +86,18 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
 
   const ratingCount = ratingRows?.length || 0
   const ratingAvg = ratingCount > 0 ? (ratingRows!.reduce((a, r) => a + r.stars, 0) / ratingCount) : null
+
+  // Group specialty tags under their category, ordered by the provider's areas of care.
+  const tagsByType = new Map<string, string[]>()
+  ;(tags || []).forEach((t) => {
+    const arr = tagsByType.get(t.tag_type) || []
+    arr.push(t.tag_value)
+    tagsByType.set(t.tag_type, arr)
+  })
+  const orderedKeys: string[] = []
+  ;(cats || []).forEach((c) => { if (!orderedKeys.includes(c.category)) orderedKeys.push(c.category) })
+  ;(tags || []).forEach((t) => { if (!orderedKeys.includes(t.tag_type)) orderedKeys.push(t.tag_type) })
+
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: BRAND.pageBg, minHeight: '100vh' }}>
       <RecordProfileView providerId={id} />
@@ -171,33 +182,25 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
             </Section>
           )}
 
-          {cats && cats.length > 0 && (
-            <Section title="Areas of care">
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {cats.map((c) => (
-                  <span key={c.category} style={chipAccent}>{categoryLabel(c.category)}</span>
-                ))}
-              </div>
-            </Section>
-          )}
-
-          {tags && tags.length > 0 && (
-            <Section title="Specialties">
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {tags.map((t, i) => (
-                  <span key={i} style={pill}>{t.tag_value}</span>
-                ))}
+          {orderedKeys.length > 0 && (
+            <Section title="Areas of care & specialties">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {orderedKeys.map((key) => {
+                  const items = tagsByType.get(key) || []
+                  return (
+                    <div key={key}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: dark, marginBottom: 4 }}>{categoryLabel(key)}</div>
+                      {items.length > 0 && <p style={{ fontSize: 14.5, lineHeight: 1.75, color: '#54625f', margin: 0 }}>{items.join(', ')}</p>}
+                    </div>
+                  )
+                })}
               </div>
             </Section>
           )}
 
           {insurance && insurance.length > 0 && (
             <Section title="Insurance & payment">
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {insurance.map((ins, i) => (
-                  <span key={i} style={pill}>{ins.insurance}</span>
-                ))}
-              </div>
+              <p style={{ fontSize: 14.5, lineHeight: 1.75, color: '#54625f', margin: 0 }}>{insurance.map((ins) => ins.insurance).join(', ')}</p>
             </Section>
           )}
 
@@ -253,7 +256,8 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 22, paddingTop: 22, borderTop: '0.5px solid ' + hairline }}>
-      <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: dark, marginBottom: 12 }}>{title}</div>
+      <div style={{ fontFamily: SERIF, fontSize: 19, fontWeight: 600, color: dark, letterSpacing: '-0.01em' }}>{title}</div>
+      <div style={{ height: 2, width: 30, background: champagne, margin: '7px 0 14px' }} />
       {children}
     </div>
   )
