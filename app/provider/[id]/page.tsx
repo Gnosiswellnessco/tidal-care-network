@@ -19,8 +19,16 @@ const champagne = BRAND.champagne
 const cardShadow = '0 1px 3px rgba(44,77,82,0.05)'
 const demoPill: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 9px', borderRadius: 99, background: '#fbe7c2', color: '#92610a' }
 
+const POST_DOT: Record<string, string> = { news: '#3e6a70', event: '#b5aa8e', announcement: '#e8b54a', resource: '#5ba1a9' }
+const POST_LABEL: Record<string, string> = { news: 'News', event: 'Event', announcement: 'Announcement', resource: 'Resource' }
+
 function categoryLabel(key: string) {
   return CATEGORIES.find((c) => c.key === key)?.label || key
+}
+
+function shortDate(d: string | null) {
+  if (!d) return ''
+  return new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
 // Turn a YouTube or Vimeo URL into an embeddable URL. Returns null if unrecognized.
@@ -80,6 +88,28 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
     gallery = g || []
   }
 
+  // Premium: this provider's recent published posts (for "Latest from …")
+  type ProfilePost = {
+    id: string; slug: string; post_type: string; title: string; image_url: string | null
+    event_date: string | null; published_at: string
+  }
+  let recentPosts: ProfilePost[] = []
+  let hasMorePosts = false
+  if (premium) {
+    const nowISO = new Date().toISOString()
+    const { data: pp } = await supabase
+      .from('provider_posts')
+      .select('id, slug, post_type, title, image_url, event_date, published_at')
+      .eq('provider_id', id)
+      .eq('status', 'published')
+      .or(`expires_at.is.null,expires_at.gt.${nowISO}`)
+      .order('published_at', { ascending: false })
+      .limit(4)
+    const all = (pp as ProfilePost[]) || []
+    recentPosts = all.slice(0, 3)
+    hasMorePosts = all.length > 3
+  }
+
   const { data: ratingRows } = await supabase
     .from('ratings')
     .select('stars')
@@ -105,6 +135,8 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
   if (p.primary_area) metaParts.push(p.primary_area)
   if (p.offers_telehealth) metaParts.push('Telehealth available')
   const metaLine = metaParts.join(' · ')
+
+  const providerLabel = p.is_org ? (p.practice_name || p.full_name) : (p.full_name || 'this provider')
 
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: BRAND.pageBg, minHeight: '100vh' }}>
@@ -203,6 +235,35 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
           {insurance && insurance.length > 0 && (
             <Section title="Insurance & payment">
               <p style={{ fontSize: 14.5, lineHeight: 1.75, color: '#54625f', margin: 0 }}>{insurance.map((ins) => ins.insurance).join(', ')}</p>
+            </Section>
+          )}
+
+          {premium && recentPosts.length > 0 && (
+            <Section title={`Latest from ${providerLabel}`}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+                {recentPosts.map((post) => (
+                  <Link key={post.id} href={`/news/${post.slug}`} style={{ textDecoration: 'none', color: 'inherit', background: 'white', border: '0.5px solid ' + hairline, borderRadius: 12, overflow: 'hidden', display: 'block' }}>
+                    <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: post.image_url ? '#e5e3dc' : '#dde6e3', overflow: 'hidden' }}>
+                      {post.image_url && <img src={post.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
+                    </div>
+                    <div style={{ padding: '13px 15px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 7 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: POST_DOT[post.post_type] || teal }} />
+                        <span style={{ fontSize: 10, fontWeight: 500, color: dark, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{POST_LABEL[post.post_type] || post.post_type}</span>
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: dark, lineHeight: 1.35, marginBottom: 6 }}>{post.title}</div>
+                      <div style={{ fontSize: 11, color: '#9aa0a1' }}>
+                        {post.post_type === 'event' && post.event_date ? `Event ${shortDate(post.event_date)}` : shortDate(post.published_at)}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              {hasMorePosts && (
+                <div style={{ marginTop: 14 }}>
+                  <Link href="/news" style={{ fontSize: 13, fontWeight: 500, color: teal, textDecoration: 'none' }}>View all updates →</Link>
+                </div>
+              )}
             </Section>
           )}
 
