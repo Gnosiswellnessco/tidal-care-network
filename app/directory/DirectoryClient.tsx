@@ -46,6 +46,7 @@ type Provider = {
   show_supporter_badge?: boolean | null
   booking_type?: string | null
   booking_value?: string | null
+  is_demo?: boolean | null
 }
 
 export default function DirectoryClient({ providers }: { providers: Provider[] }) {
@@ -501,6 +502,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+                  {p.is_demo && <span style={demoPill}>Demo</span>}
                   <img src="/vetted.svg" alt="Vetted" style={{ height: 20, width: 'auto', display: 'block' }} />
                   {p.is_endorsed && <img src="/endorsed.svg" alt="Peer endorsed" style={{ height: 20, width: 'auto', display: 'block' }} />}
                   {supporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 20, width: 'auto', display: 'block' }} />}
@@ -665,6 +667,7 @@ const panelSecLabel: React.CSSProperties = { fontSize: 11, fontWeight: 700, colo
 const checkRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: dark, cursor: 'pointer', padding: '2px 0' }
 const matchChip: React.CSSProperties = { fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 99, background: teal, color: 'white' }
 const pill: React.CSSProperties = { fontSize: 11, fontWeight: 500, padding: '3px 10px', borderRadius: 99, background: 'white', border: '0.5px solid ' + hairline, color: '#5f6b6d' }
+const demoPill: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 9px', borderRadius: 99, background: '#fbe7c2', color: '#92610a' }
 function modeBtn(on: boolean): React.CSSProperties {
   return { fontSize: 12, padding: '4px 10px', borderRadius: 6, border: on ? `1.5px solid ${teal}` : '1px solid #d4d2ca', background: on ? mint : 'white', color: dark, cursor: 'pointer' }
 }

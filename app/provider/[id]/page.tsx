@@ -17,6 +17,7 @@ const mint = BRAND.mint
 const hairline = BRAND.hairline
 const champagne = BRAND.champagne
 const cardShadow = '0 1px 3px rgba(44,77,82,0.05)'
+const demoPill: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 9px', borderRadius: 99, background: '#fbe7c2', color: '#92610a' }
 
 function categoryLabel(key: string) {
   return CATEGORIES.find((c) => c.key === key)?.label || key
@@ -116,6 +117,7 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
         <div style={{ background: 'white', borderRadius: 18, border: '0.5px solid ' + hairline, boxShadow: cardShadow, padding: 36 }}>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+            {p.is_demo && <span style={demoPill}>Demo listing</span>}
             <img src="/vetted.svg" alt="Vetted" style={{ height: 26, width: 'auto', display: 'block' }} />
             {isEndorsed && <img src="/endorsed.svg" alt="Peer endorsed" style={{ height: 26, width: 'auto', display: 'block' }} />}
             {showSupporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 26, width: 'auto', display: 'block' }} />}
