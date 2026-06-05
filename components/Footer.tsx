@@ -1,21 +1,28 @@
 import Link from 'next/link'
+import { BRAND, LOGO } from '@/lib/brand'
 
-const teal = '#3e6a70'
+const link: React.CSSProperties = { fontSize: 12.5, color: BRAND.teal, textDecoration: 'none' }
 
 export default function Footer() {
+  const year = new Date().getFullYear()
   return (
-    <footer style={{ borderTop: '1px solid #e5e3dc', background: '#f7f6f2', padding: '28px 40px', marginTop: 40 }}>
-      <div style={{ maxWidth: 1000, margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ fontSize: 13, color: '#888' }}>
-          © {new Date().getFullYear()} Tidal Care Network · Administered by Gnosis Wellness Collective
+    <footer style={{ borderTop: '0.5px solid ' + BRAND.hairline, background: BRAND.pageBg, padding: '32px 40px', marginTop: 40 }}>
+      <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'center', justifyContent: 'space-between' }}>
+          <Link href="/" style={{ display: 'inline-block', textDecoration: 'none' }}>
+            <img src={LOGO.full} alt="Tidal Care Network" style={{ height: 84, width: 'auto', display: 'block' }} />
+          </Link>
+          <nav style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Link href="/news" style={link}>News</Link>
+            <Link href="/terms-of-participation" style={link}>Provider Terms</Link>
+            <Link href="/ethics" style={link}>Ethics Agreement</Link>
+            <Link href="/privacy" style={link}>Privacy Policy</Link>
+            <a href="mailto:info@tidalcare.org" style={link}>Contact</a>
+          </nav>
         </div>
-        <nav style={{ display: 'flex', flexWrap: 'wrap', gap: 18, fontSize: 13 }}>
-          <Link href="/news" style={{ color: teal, textDecoration: 'none' }}>News</Link>
-          <Link href="/terms-of-participation" style={{ color: teal, textDecoration: 'none' }}>Provider Terms</Link>
-          <Link href="/ethics" style={{ color: teal, textDecoration: 'none' }}>Ethics Agreement</Link>
-          <Link href="/privacy" style={{ color: teal, textDecoration: 'none' }}>Privacy Policy</Link>
-          <a href="mailto:info@tidalcare.org" style={{ color: teal, textDecoration: 'none' }}>Contact</a>
-        </nav>
+        <div style={{ fontSize: 12, color: '#9aa0a1', marginTop: 18 }}>
+          © {year} Tidal Care Network · Administered by Gnosis Wellness Collective
+        </div>
       </div>
     </footer>
   )
