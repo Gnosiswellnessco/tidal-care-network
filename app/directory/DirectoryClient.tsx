@@ -500,10 +500,10 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                   </label>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
                   <img src="/vetted.svg" alt="Vetted" style={{ height: 20, width: 'auto', display: 'block' }} />
                   {p.is_endorsed && <img src="/endorsed.svg" alt="Peer endorsed" style={{ height: 20, width: 'auto', display: 'block' }} />}
-                  {supporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 32, width: 'auto', display: 'block' }} />}
+                  {supporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 20, width: 'auto', display: 'block' }} />}
                 </div>
 
                 <Link href={`/provider/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
