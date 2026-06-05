@@ -8,13 +8,18 @@ import { RatingDisplay } from '@/components/RatingWidget'
 import DirectoryMap from '@/components/DirectoryMap'
 import SignOutButton from '@/components/SignOutButton'
 import QRCodeImage from '@/components/QRCode'
+import SiteHeader from '@/components/SiteHeader'
+import { BRAND, SERIF } from '@/lib/brand'
 import { REGIONS, METROS_BY_REGION, regionForZip, type Region } from '@/lib/sc-regions'
 import { showsSupporterBadge, hasBooking, bookingAction, PREMIUM_ACCENT } from '@/lib/subscription'
 
 
-const teal = '#3e6a70'
-const dark = '#2c4d52'
-const mint = '#e8eff0'
+const teal = BRAND.teal
+const dark = BRAND.dark
+const mint = BRAND.mint
+const hairline = BRAND.hairline
+const champagne = BRAND.champagne
+const cardShadow = '0 1px 3px rgba(44,77,82,0.05)'
 
 function categoryLabel(key: string) {
   return CATEGORIES.find((c) => c.key === key)?.label || key
@@ -265,13 +270,31 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
 
   const anyFilterActive = !!(category || specialties.length || insurances.length || pops.length || region || teleOnly || acceptingOnly || search)
 
+  const headerRight = (
+    <>
+      <Link href="/directory" style={{ fontSize: 14, color: teal, fontWeight: 500, textDecoration: 'none' }}>Find a provider</Link>
+      <Link href="/news" style={{ fontSize: 14, color: '#4a5557', textDecoration: 'none' }}>News</Link>
+      {myProviderId ? (
+        <>
+          <Link href="/dashboard" style={{ fontSize: 14, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>My dashboard</Link>
+          <SignOutButton />
+        </>
+      ) : (
+        <>
+          <Link href="/login" style={{ fontSize: 14, color: dark, textDecoration: 'none' }}>Provider login</Link>
+          <Link href="/login?next=/join" style={{ fontSize: 14, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>Join the network</Link>
+        </>
+      )}
+    </>
+  )
+
   return (
-    <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
+    <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: BRAND.pageBg, minHeight: '100vh' }}>
       {!agreed && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(20,30,32,0.6)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <div style={{ background: 'white', borderRadius: 16, maxWidth: 480, padding: 32, textAlign: 'center' }}>
-            <img src="/tidal-care-network.svg" alt="Tidal Care Network" style={{ height: 48, width: 'auto', marginBottom: 16 }} />
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: dark, marginBottom: 12 }}>Before you browse</h2>
+            <img src="/tidal-care-network.svg" alt="Tidal Care Network" style={{ height: 96, width: 'auto', margin: '0 auto 16px', display: 'block' }} />
+            <h2 style={{ fontFamily: SERIF, fontSize: 24, fontWeight: 600, color: dark, marginBottom: 12 }}>Before you browse</h2>
             <p style={{ fontSize: 14, color: '#555', lineHeight: 1.6, marginBottom: 16, textAlign: 'left' }}>
               Tidal Care Network is a directory only. The providers listed are independent professionals — we are not responsible for the care they provide, and a listing is not an endorsement or guarantee. You are responsible for evaluating any provider and verifying their credentials before engaging them.
             </p>
@@ -289,31 +312,17 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
           </div>
         </div>
       )}
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 1100, margin: '0 auto' }}>
-        <Link href="/"><img src="/tidal-care-network.svg" alt="Tidal Care Network" style={{ height: 180, width: 'auto' }} /></Link>
-        <nav style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-          <Link href="/directory" style={{ fontSize: 15, color: teal, fontWeight: 500, textDecoration: 'none' }}>Find a provider</Link>
-          {myProviderId ? (
-            <>
-              <Link href="/dashboard" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>My dashboard</Link>
-              <SignOutButton />
-            </>
-          ) : (
-            <>
-              <Link href="/login" style={{ fontSize: 15, color: dark, textDecoration: 'none' }}>Provider login</Link>
-              <Link href="/login?next=/join" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>Join the network</Link>
-            </>
-          )}
-        </nav>
-      </header>
 
-      <section style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 40px 8px' }}>
-        <h1 style={{ fontSize: 30, fontWeight: 700, color: dark, marginBottom: 8 }}>Provider directory</h1>
-        <p style={{ fontSize: 16, color: '#666' }}>{filtered.length} of {providers.length} provider{providers.length === 1 ? '' : 's'} · check providers to build a referral</p>
+      <SiteHeader right={headerRight} />
+
+      <section style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 40px 8px' }}>
+        <h1 style={{ fontFamily: SERIF, fontSize: 34, fontWeight: 600, color: dark, marginBottom: 6, letterSpacing: '-0.01em' }}>Provider directory</h1>
+        <p style={{ fontSize: 15, color: '#6b7577' }}>{filtered.length} of {providers.length} provider{providers.length === 1 ? '' : 's'} · check providers to build a referral</p>
       </section>
+
       <section style={{ maxWidth: 1000, margin: '0 auto', padding: '8px 40px 0' }}>
-        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: '20px 24px', fontSize: 13, color: '#777', lineHeight: 1.7 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>How to use this directory</div>
+        <div style={{ background: BRAND.panelBg, borderRadius: 14, border: '0.5px solid #dde7e6', padding: '18px 24px', fontSize: 13, color: '#54625f', lineHeight: 1.7 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#7d8a87', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>How to use this directory</div>
           <p style={{ margin: '0 0 8px' }}>
             Browse or filter providers by category, specialty, population, insurance, region, telehealth, and whether they&apos;re accepting new clients. Open any provider&apos;s profile to see their full details and contact information. To build a referral, check &quot;Refer&quot; on one or more providers, then create a private link you can share, show as a QR code, or print.
           </p>
@@ -324,8 +333,8 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
       </section>
 
 
-      <section style={{ maxWidth: 1000, margin: '0 auto', padding: '8px 40px 16px' }}>
-        <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 16 }}>
+      <section style={{ maxWidth: 1000, margin: '0 auto', padding: '16px 40px 16px' }}>
+        <div style={{ background: 'white', borderRadius: 14, border: '0.5px solid ' + hairline, boxShadow: cardShadow, padding: 16 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name, practice, keyword, specialty, insurance, or population…" style={{ flex: '1 1 220px', padding: '10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: 'white' }} />
             <select value={category} onChange={(e) => { setCategory(e.target.value); setSpecialties([]) }} style={selectStyle}>
@@ -422,12 +431,12 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               {region && METROS_BY_REGION[region as Region].map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 14, paddingTop: 14, borderTop: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 14, paddingTop: 14, borderTop: '1px solid #f0eee8', flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: dark, cursor: 'pointer' }}><input type="checkbox" checked={teleOnly} onChange={(e) => setTeleOnly(e.target.checked)} /> Telehealth available</label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: dark, cursor: 'pointer' }}><input type="checkbox" checked={acceptingOnly} onChange={(e) => setAcceptingOnly(e.target.checked)} /> Accepting new clients</label>
             {anyFilterActive && <button onClick={clearFilters} style={{ fontSize: 13, color: teal, background: 'none', border: 'none', cursor: 'pointer', marginLeft: 'auto', fontWeight: 500 }}>Clear all filters</button>}
           </div>
-          <div style={{ display: 'flex', gap: 20, alignItems: 'center', marginTop: 14, paddingTop: 14, borderTop: '1px solid #f0f0f0', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 20, alignItems: 'center', marginTop: 14, paddingTop: 14, borderTop: '1px solid #f0eee8', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <img src="/vetted.svg" alt="Vetted" style={{ height: 18, width: 'auto' }} />
               <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Vetted</strong> — credentials reviewed by the Network</span>
@@ -479,7 +488,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               const recCount = recCounts[p.id] ?? p.peer_rec_count ?? 0
               const isRec = recommended.includes(p.id)
               return (
-              <div key={p.id} style={{ background: 'white', borderRadius: 12, border: isSelected(p.id) ? `2px solid ${teal}` : '1px solid #e5e3dc', padding: 24, position: 'relative' }}>
+              <div key={p.id} style={{ background: 'white', borderRadius: 14, border: isSelected(p.id) ? `2px solid ${teal}` : '0.5px solid ' + hairline, boxShadow: cardShadow, padding: 24, position: 'relative' }}>
                 <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
                   {myProviderId && myProviderId !== p.id && (
                     <button onClick={() => toggleFavorite(p.id)} title={favorites.includes(p.id) ? 'Remove from referral sources' : 'Add to referral sources'} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, display: 'flex' }}>
@@ -499,7 +508,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
 
                 <Link href={`/provider/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12, paddingRight: 60 }}>
-                    <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: mint, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e5e3dc' }}>
+                    <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: mint, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid ' + hairline }}>
                       {p.photo_url ? <img src={p.photo_url} alt={p.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 20, fontWeight: 600, color: teal }}>{(p.full_name || '?').charAt(0).toUpperCase()}</span>}
                     </div>
                     <div>
@@ -566,9 +575,9 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
             </button>
           )}
 
-          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(420px, 100vw)', background: '#f7f6f2', zIndex: 50, boxShadow: '-4px 0 24px rgba(0,0,0,0.15)', overflowY: 'auto', padding: 24, transform: trayOpen ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.28s ease' }}>
+          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(420px, 100vw)', background: BRAND.pageBg, zIndex: 50, boxShadow: '-4px 0 24px rgba(0,0,0,0.15)', overflowY: 'auto', padding: 24, transform: trayOpen ? 'translateX(0)' : 'translateX(100%)', transition: 'transform 0.28s ease' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: dark }}>Your referral</h2>
+              <h2 style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: dark }}>Your referral</h2>
               <button onClick={() => setTrayOpen(false)} aria-label="Hide tray" style={{ fontSize: 13, fontWeight: 500, color: teal, background: 'none', border: 'none', cursor: 'pointer' }}>Hide →</button>
             </div>
 
@@ -579,7 +588,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
             )}
 
             {step === 'done' ? (
-              <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 24, textAlign: 'center' }}>
+              <div style={{ background: 'white', borderRadius: 12, border: '0.5px solid ' + hairline, padding: 24, textAlign: 'center' }}>
                 <div style={{ fontSize: 36, marginBottom: 8 }}>✓</div>
                 <h3 style={{ fontSize: 18, fontWeight: 700, color: dark, marginBottom: 8 }}>Referral link ready</h3>
                 <p style={{ fontSize: 14, color: '#555', marginBottom: 16, lineHeight: 1.6 }}>Share this link, show the QR code for the person to scan, or print it. It contains no personal information about them.</p>
@@ -604,7 +613,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
                   {selected.map((p) => (
-                    <div key={p.id} style={{ padding: '10px 12px', background: 'white', borderRadius: 8, border: '1px solid #e5e3dc' }}>
+                    <div key={p.id} style={{ padding: '10px 12px', background: 'white', borderRadius: 8, border: '0.5px solid ' + hairline }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                         <span style={{ fontSize: 13, color: dark, fontWeight: 500 }}>{p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}</span>
                         <button onClick={() => toggleSelect(p)} style={{ fontSize: 12, color: '#991b1b', background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>Remove</button>
@@ -620,7 +629,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                   ))}
                 </div>
 
-                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 20 }}>
+                <div style={{ background: 'white', borderRadius: 12, border: '0.5px solid ' + hairline, padding: 20 }}>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: dark, marginBottom: 6 }}>Optional note</label>
                   <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="A short, general note (optional)." style={{ ...trayInp, minHeight: 60, resize: 'vertical' }} />
                   <p style={{ fontSize: 11, color: '#b3504f', marginTop: -6, marginBottom: 14, lineHeight: 1.5 }}>
