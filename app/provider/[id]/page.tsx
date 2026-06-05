@@ -115,21 +115,22 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
 
         <div style={{ background: 'white', borderRadius: 18, border: '0.5px solid ' + hairline, boxShadow: cardShadow, padding: 36 }}>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
-            <img src="/vetted.svg" alt="Vetted" style={{ height: 28, width: 'auto', display: 'block' }} />
-            {isEndorsed && <img src="/endorsed.svg" alt="Peer endorsed" style={{ height: 28, width: 'auto', display: 'block' }} />}
-            {showSupporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 28, width: 'auto', display: 'block' }} />}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
-            <div style={{ width: 88, height: 88, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: mint, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid ' + hairline }}>
-              {p.photo_url ? (
-                <img src={p.photo_url} alt={p.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <span style={{ fontSize: 32, fontWeight: 600, color: teal }}>{(p.full_name || '?').charAt(0).toUpperCase()}</span>
-              )}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, marginBottom: 24 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+              <div style={{ width: 88, height: 88, borderRadius: '50%', overflow: 'hidden', background: mint, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid ' + hairline }}>
+                {p.photo_url ? (
+                  <img src={p.photo_url} alt={p.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: 32, fontWeight: 600, color: teal }}>{(p.full_name || '?').charAt(0).toUpperCase()}</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <img src="/vetted.svg" alt="Vetted" style={{ height: 26, width: 'auto', display: 'block' }} />
+                {isEndorsed && <img src="/endorsed.svg" alt="Peer endorsed" style={{ height: 26, width: 'auto', display: 'block' }} />}
+                {showSupporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 26, width: 'auto', display: 'block' }} />}
+              </div>
             </div>
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, paddingTop: 2 }}>
               <h1 style={{ fontFamily: SERIF, fontSize: 31, fontWeight: 600, color: dark, marginBottom: 4, letterSpacing: '-0.01em', lineHeight: 1.1 }}>
                 {p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}
               </h1>
