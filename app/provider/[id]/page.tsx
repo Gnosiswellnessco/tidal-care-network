@@ -6,8 +6,18 @@ import { RatingDisplay, RatingSubmit } from '@/components/RatingWidget'
 import { isPremium, showsSupporterBadge, hasBooking, bookingAction, PREMIUM_ACCENT } from '@/lib/subscription'
 import PeerRecommendButton from '@/components/PeerRecommendButton'
 import RecordProfileView from '@/components/RecordProfileView'
+import SiteHeader from '@/components/SiteHeader'
+import { BRAND, SERIF } from '@/lib/brand'
 
 export const dynamic = 'force-dynamic'
+
+const teal = BRAND.teal
+const dark = BRAND.dark
+const mint = BRAND.mint
+const hairline = BRAND.hairline
+const cardShadow = '0 1px 3px rgba(44,77,82,0.05)'
+const pill: React.CSSProperties = { fontSize: 12, fontWeight: 500, padding: '4px 11px', borderRadius: 99, background: 'white', border: '0.5px solid ' + hairline, color: '#5f6b6d' }
+const chipAccent: React.CSSProperties = { fontSize: 12, fontWeight: 600, padding: '4px 11px', borderRadius: 99, background: mint, color: dark }
 
 function categoryLabel(key: string) {
   return CATEGORIES.find((c) => c.key === key)?.label || key
@@ -78,16 +88,14 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
   const ratingCount = ratingRows?.length || 0
   const ratingAvg = ratingCount > 0 ? (ratingRows!.reduce((a, r) => a + r.stars, 0) / ratingCount) : null
   return (
-    <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
+    <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: BRAND.pageBg, minHeight: '100vh' }}>
       <RecordProfileView providerId={id} />
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 900, margin: '0 auto' }}>
-        <Link href="/"><img src="/tidal-care-network.svg" alt="Tidal Care Network" style={{ height: 180, width: 'auto' }} /></Link>
-        <Link href="/directory" style={{ fontSize: 14, color: '#3e6a70', textDecoration: 'none' }}>← Back to directory</Link>
-      </header>
 
-      <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px 40px 64px' }}>
+      <SiteHeader right={<Link href="/directory" style={{ fontSize: 14, color: teal, textDecoration: 'none' }}>← Back to directory</Link>} />
 
-        <div style={{ background: 'white', borderRadius: 16, border: '1px solid #e5e3dc', padding: 32, position: 'relative' }}>
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '28px 40px 64px' }}>
+
+        <div style={{ background: 'white', borderRadius: 18, border: '0.5px solid ' + hairline, boxShadow: cardShadow, padding: 36, position: 'relative' }}>
 
           <div style={{ position: 'absolute', top: 24, right: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
             <img src="/vetted.svg" alt="Vetted" style={{ height: 26, width: 'auto', display: 'block' }} />
@@ -95,15 +103,15 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
-            <div style={{ width: 88, height: 88, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: '#e8eff0', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e5e3dc' }}>
+            <div style={{ width: 88, height: 88, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, background: mint, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid ' + hairline }}>
               {p.photo_url ? (
                 <img src={p.photo_url} alt={p.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : (
-                <span style={{ fontSize: 32, fontWeight: 600, color: '#3e6a70' }}>{(p.full_name || '?').charAt(0).toUpperCase()}</span>
+                <span style={{ fontSize: 32, fontWeight: 600, color: teal }}>{(p.full_name || '?').charAt(0).toUpperCase()}</span>
               )}
             </div>
             <div>
-              <h1 style={{ fontSize: 26, fontWeight: 700, color: '#2c4d52', marginBottom: 4 }}>
+              <h1 style={{ fontFamily: SERIF, fontSize: 31, fontWeight: 600, color: dark, marginBottom: 4, letterSpacing: '-0.01em', lineHeight: 1.1 }}>
                 {p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}
               </h1>
               <div style={{ fontSize: 14, color: '#888' }}>
@@ -111,12 +119,14 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
                 {p.primary_area}{p.offers_telehealth ? ' · Telehealth available' : ''}
               </div>
               {p.availability_status === 'accepting' && (
-                <span style={{ display: 'inline-block', marginTop: 8, fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 6, background: '#eaf3de', color: '#27500a' }}>Accepting new clients</span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', marginTop: 8, fontSize: 12, fontWeight: 500, padding: '4px 11px', borderRadius: 99, background: 'white', border: '0.5px solid ' + hairline, color: '#5f6b6d' }}>
+                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#5a9b6b', marginRight: 6 }} />Accepting new clients
+                </span>
               )}
               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <RatingDisplay avg={ratingAvg} count={ratingCount} size={18} />
                 {(recommendCount || 0) > 0 && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#3e6a70', background: '#e8eff0', padding: '4px 11px', borderRadius: 999 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: teal, background: mint, padding: '4px 11px', borderRadius: 999 }}>
                     <img src="/thumbs-up.svg" alt="" style={{ height: 15, width: 'auto', display: 'block' }} />
                     {recommendCount} peer recommendation{recommendCount === 1 ? '' : 's'}
                   </span>
@@ -153,7 +163,7 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
             <Section title="Gallery">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
                 {gallery.map((g) => (
-                  <div key={g.id} style={{ aspectRatio: '1', borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e3dc' }}>
+                  <div key={g.id} style={{ aspectRatio: '1', borderRadius: 8, overflow: 'hidden', border: '0.5px solid ' + hairline }}>
                     <img src={g.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </div>
                 ))}
@@ -165,7 +175,7 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
             <Section title="Areas of care">
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {cats.map((c) => (
-                  <span key={c.category} style={{ fontSize: 12, fontWeight: 500, padding: '4px 11px', borderRadius: 99, background: '#e8eff0', color: '#2c4d52' }}>{categoryLabel(c.category)}</span>
+                  <span key={c.category} style={chipAccent}>{categoryLabel(c.category)}</span>
                 ))}
               </div>
             </Section>
@@ -175,7 +185,7 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
             <Section title="Specialties">
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {tags.map((t, i) => (
-                  <span key={i} style={{ fontSize: 12, padding: '4px 11px', borderRadius: 99, background: '#f1efe8', color: '#444' }}>{t.tag_value}</span>
+                  <span key={i} style={pill}>{t.tag_value}</span>
                 ))}
               </div>
             </Section>
@@ -185,7 +195,7 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
             <Section title="Insurance & payment">
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {insurance.map((ins, i) => (
-                  <span key={i} style={{ fontSize: 12, padding: '4px 11px', borderRadius: 99, background: '#f1efe8', color: '#444' }}>{ins.insurance}</span>
+                  <span key={i} style={pill}>{ins.insurance}</span>
                 ))}
               </div>
             </Section>
@@ -195,7 +205,7 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
             <Section title="Links">
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {customLinks.map((l, i) => (
-                  <a key={i} href={l.url.startsWith('http') ? l.url : `https://${l.url}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 500, color: '#3e6a70', background: '#e8eff0', padding: '6px 14px', borderRadius: 99, textDecoration: 'none' }}>{l.label} ↗</a>
+                  <a key={i} href={l.url.startsWith('http') ? l.url : `https://${l.url}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 500, color: teal, background: mint, padding: '6px 14px', borderRadius: 99, textDecoration: 'none' }}>{l.label} ↗</a>
                 ))}
               </div>
             </Section>
@@ -203,9 +213,9 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
 
           <Section title="Contact this provider">
             <div style={{ fontSize: 14, color: '#444', lineHeight: 1.8, marginBottom: 14 }}>
-              {p.email && <div>Email: <a href={`mailto:${p.email}`} style={{ color: '#3e6a70' }}>{p.email}</a></div>}
-              {p.phone && <div>Phone: <a href={`tel:${p.phone}`} style={{ color: '#3e6a70' }}>{p.phone}</a></div>}
-              {p.website && <div>Website: <a href={p.website} target="_blank" rel="noopener noreferrer" style={{ color: '#3e6a70' }}>{p.website}</a></div>}
+              {p.email && <div>Email: <a href={`mailto:${p.email}`} style={{ color: teal }}>{p.email}</a></div>}
+              {p.phone && <div>Phone: <a href={`tel:${p.phone}`} style={{ color: teal }}>{p.phone}</a></div>}
+              {p.website && <div>Website: <a href={p.website} target="_blank" rel="noopener noreferrer" style={{ color: teal }}>{p.website}</a></div>}
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {booking && (
@@ -215,12 +225,12 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
                 </a>
               )}
               {p.email && (
-                <a href={`mailto:${p.email}?subject=${encodeURIComponent('Connecting via Tidal Care Network')}`} style={{ fontSize: 14, fontWeight: 500, color: 'white', background: '#3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
+                <a href={`mailto:${p.email}?subject=${encodeURIComponent('Connecting via Tidal Care Network')}`} style={{ fontSize: 14, fontWeight: 500, color: 'white', background: teal, padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
                   Email this provider
                 </a>
               )}
               {p.phone && (
-                <a href={`tel:${p.phone}`} style={{ fontSize: 14, fontWeight: 500, color: '#3e6a70', background: 'white', border: '1px solid #3e6a70', padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
+                <a href={`tel:${p.phone}`} style={{ fontSize: 14, fontWeight: 500, color: teal, background: 'white', border: '1px solid ' + teal, padding: '10px 20px', borderRadius: 8, textDecoration: 'none' }}>
                   Call
                 </a>
               )}
@@ -242,8 +252,8 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 20, paddingTop: 20, borderTop: '1px solid #f0f0f0' }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>{title}</div>
+    <div style={{ marginBottom: 22, paddingTop: 22, borderTop: '0.5px solid ' + hairline }}>
+      <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: dark, marginBottom: 12 }}>{title}</div>
       {children}
     </div>
   )
