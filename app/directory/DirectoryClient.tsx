@@ -512,11 +512,11 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                       {p.photo_url ? <img src={p.photo_url} alt={p.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 20, fontWeight: 600, color: teal }}>{(p.full_name || '?').charAt(0).toUpperCase()}</span>}
                     </div>
                     <div>
-                      <div style={{ fontSize: 17, fontWeight: 600, color: dark, marginBottom: 2 }}>{p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}</div>
+                      <div style={{ fontFamily: SERIF, fontSize: 19, fontWeight: 600, color: dark, marginBottom: 2, letterSpacing: '-0.01em', lineHeight: 1.15 }}>{p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}</div>
                       <div style={{ fontSize: 13, color: '#888' }}>{p.practice_name && !p.is_org ? `${p.practice_name} · ` : ''}{p.primary_area}</div>
                     </div>
                   </div>
-                  {p.bio && <p style={{ fontSize: 14, lineHeight: 1.6, color: '#555', marginBottom: 12 }}>{p.bio}</p>}
+                  {p.bio && <p style={{ fontSize: 14, lineHeight: 1.6, color: '#555', marginBottom: 12, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.bio}</p>}
 
                   {(matchedSpecs.length > 0 || matchedIns.length > 0 || matchedPops.length > 0) && (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -527,14 +527,14 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                   )}
 
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                    {primaryCat && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: mint, color: dark }}>{categoryLabel(primaryCat)}</span>}
-                    {p.availability_status === 'accepting' && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: '#eaf3de', color: '#27500a' }}>Accepting clients</span>}
-                    {p.offers_telehealth && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: '#e8eff5', color: '#2c4d6e' }}>Telehealth</span>}
-                    {(p.provider_insurance || []).slice(0, 2).map((i) => <span key={'ins' + i} style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: '#f1efe8', color: '#555' }}>{i}</span>)}
-                    {(p.provider_insurance || []).length > 2 && <span style={{ fontSize: 11, fontWeight: 500, padding: '3px 9px', borderRadius: 99, background: '#f1efe8', color: '#999' }}>+{(p.provider_insurance || []).length - 2} more</span>}
+                    {primaryCat && <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 99, background: mint, color: dark }}>{categoryLabel(primaryCat)}</span>}
+                    {p.availability_status === 'accepting' && <span style={pill}><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#5a9b6b', marginRight: 5, verticalAlign: 'middle' }} />Accepting clients</span>}
+                    {p.offers_telehealth && <span style={pill}>Telehealth</span>}
+                    {(p.provider_insurance || []).slice(0, 2).map((i) => <span key={'ins' + i} style={pill}>{i}</span>)}
+                    {(p.provider_insurance || []).length > 2 && <span style={{ ...pill, color: '#9aa0a1' }}>+{(p.provider_insurance || []).length - 2} more</span>}
                   </div>
 
-                  <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '0.5px solid ' + hairline, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <RatingDisplay avg={p.rating_avg ?? null} count={p.rating_count ?? 0} size={14} />
                     {recCount > 0 && (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: teal, background: mint, padding: '3px 9px', borderRadius: 999 }}>
@@ -664,6 +664,7 @@ const panelHeader: React.CSSProperties = { display: 'flex', gap: 6, marginBottom
 const panelSecLabel: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#999', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }
 const checkRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: dark, cursor: 'pointer', padding: '2px 0' }
 const matchChip: React.CSSProperties = { fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 99, background: teal, color: 'white' }
+const pill: React.CSSProperties = { fontSize: 11, fontWeight: 500, padding: '3px 10px', borderRadius: 99, background: 'white', border: '0.5px solid ' + hairline, color: '#5f6b6d' }
 function modeBtn(on: boolean): React.CSSProperties {
   return { fontSize: 12, padding: '4px 10px', borderRadius: 6, border: on ? `1.5px solid ${teal}` : '1px solid #d4d2ca', background: on ? mint : 'white', color: dark, cursor: 'pointer' }
 }
