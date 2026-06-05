@@ -186,6 +186,7 @@ export default function PostComposer({ providerId, userId }: { providerId: strin
 
           {/* Image */}
           <label style={lbl}>Image / flyer (optional)</label>
+          <p style={{ fontSize: 12, color: '#7d8a87', lineHeight: 1.6, margin: '0 0 8px' }}>Posts with a clear, relevant image get noticeably more views and clicks. Use a bright, in-focus landscape (horizontal) photo or a clean flyer; avoid blurry shots, screenshots, and heavy filters. Make sure it&apos;s an image you have the rights to use.</p>
           <div style={{ marginBottom: 14 }}>
             {imageUrl
               ? <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><img src={imageUrl} alt="" style={{ width: 90, height: 60, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e3dc' }} /><button type="button" onClick={() => setImageUrl('')} style={{ fontSize: 12, color: '#991b1b', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button></div>

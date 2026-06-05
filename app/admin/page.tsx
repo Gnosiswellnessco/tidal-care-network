@@ -65,6 +65,32 @@ async function bulkDeleteProviders(formData: FormData) {
   revalidatePath('/admin')
 }
 
+async function removePost(formData: FormData) {
+  'use server'
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const me = await getAdminInfo(user?.email)
+  if (!me.isAdmin) return
+  const id = formData.get('id') as string
+  if (!id) return
+  const admin = createAdminClient()
+  await admin.from('provider_posts').update({ status: 'removed' }).eq('id', id)
+  revalidatePath('/admin')
+}
+
+async function restorePost(formData: FormData) {
+  'use server'
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const me = await getAdminInfo(user?.email)
+  if (!me.isAdmin) return
+  const id = formData.get('id') as string
+  if (!id) return
+  const admin = createAdminClient()
+  await admin.from('provider_posts').update({ status: 'published' }).eq('id', id)
+  revalidatePath('/admin')
+}
+
 async function approveTagRequest(formData: FormData) {
   'use server'
   const id = formData.get('id') as string
@@ -220,6 +246,24 @@ export default async function AdminPage() {
 
   const providerNameById = new Map((providers || []).map((p) => [p.id, p.full_name]))
 
+  // --- Provider posts for moderation (most recent first) ---
+  const { data: allPosts } = await admin
+    .from('provider_posts')
+    .select('id, provider_id, post_type, title, slug, status, published_at, is_demo')
+    .order('published_at', { ascending: false })
+    .limit(200)
+
+  function providerDisplay(pid: string) {
+    const pr = (providers || []).find((x) => x.id === pid)
+    if (!pr) return 'Unknown provider'
+    return pr.is_org ? (pr.practice_name || pr.full_name) : pr.full_name
+  }
+
+  const livePosts = (allPosts || []).filter((p) => p.status !== 'removed')
+  const removedPosts = (allPosts || []).filter((p) => p.status === 'removed')
+
+  const postTypeLabel: Record<string, string> = { news: 'News', event: 'Event', announcement: 'Announcement', resource: 'Resource' }
+
   let adminsList: { email: string; role: string; added_by: string | null }[] = []
   if (me.canManageAdmins) {
     const { data: rows } = await admin.from('admins').select('email, role, added_by').order('created_at', { ascending: true })
@@ -258,7 +302,7 @@ export default async function AdminPage() {
           <Stat label="Pending review" value={pending.length} />
           <Stat label="Approved" value={approved.length} />
           <Stat label="Tag requests" value={tagReqs?.length || 0} />
-          <Stat label="Total" value={total} />
+          <Stat label="Live posts" value={livePosts.length} />
         </div>
 
         <h2 style={{ fontSize: 18, fontWeight: 600, color: '#2c4d52', marginBottom: 12 }}>Pending applications</h2>
@@ -402,6 +446,52 @@ export default async function AdminPage() {
               </div>
             ))}
           </div>
+        )}
+
+        {/* Provider posts moderation */}
+        <h2 style={{ fontSize: 18, fontWeight: 600, color: '#2c4d52', marginBottom: 4 }}>Provider posts</h2>
+        <p style={{ fontSize: 13, color: '#888', marginBottom: 12, lineHeight: 1.5 }}>
+          Public news, events, announcements, and resources. Removing a post hides it from the site immediately; you can restore it later.
+        </p>
+        {livePosts.length === 0 ? (
+          <p style={{ fontSize: 14, color: '#888', marginBottom: 20 }}>No live posts right now.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+            {livePosts.map((post) => (
+              <div key={post.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'white', borderRadius: 8, border: '1px solid #e5e3dc', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: '#7d7256', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 92 }}>{postTypeLabel[post.post_type] || post.post_type}</span>
+                <span style={{ flex: 1, fontSize: 14, color: '#2c4d52', minWidth: 200 }}>
+                  {post.title}
+                  {post.is_demo && <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '2px 7px', borderRadius: 99, background: '#fbe7c2', color: '#92610a', marginLeft: 8 }}>Demo</span>}
+                </span>
+                <span style={{ fontSize: 12, color: '#9aa0a1', minWidth: 130 }}>{providerDisplay(post.provider_id)}</span>
+                <a href={`/news/${post.slug ?? ''}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#3e6a70', textDecoration: 'none' }}>View</a>
+                <form action={removePost}>
+                  <input type="hidden" name="id" value={post.id} />
+                  <button type="submit" style={{ fontSize: 12, fontWeight: 500, padding: '6px 14px', borderRadius: 8, border: '1px solid #d4d2ca', background: 'white', color: '#991b1b', cursor: 'pointer' }}>Remove</button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {removedPosts.length > 0 && (
+          <details style={{ marginBottom: 32 }}>
+            <summary style={{ fontSize: 13, color: '#888', cursor: 'pointer', marginBottom: 10 }}>Removed posts ({removedPosts.length})</summary>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {removedPosts.map((post) => (
+                <div key={post.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#faf9f5', borderRadius: 8, border: '1px solid #eee', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: '#9aa0a1', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 92 }}>{postTypeLabel[post.post_type] || post.post_type}</span>
+                  <span style={{ flex: 1, fontSize: 14, color: '#777', minWidth: 200 }}>{post.title}</span>
+                  <span style={{ fontSize: 12, color: '#9aa0a1', minWidth: 130 }}>{providerDisplay(post.provider_id)}</span>
+                  <form action={restorePost}>
+                    <input type="hidden" name="id" value={post.id} />
+                    <button type="submit" style={{ fontSize: 12, fontWeight: 500, padding: '6px 14px', borderRadius: 8, border: '1px solid #3e6a70', background: 'white', color: '#3e6a70', cursor: 'pointer' }}>Restore</button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          </details>
         )}
 
         {me.canManageAdmins && (
