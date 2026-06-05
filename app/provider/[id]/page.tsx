@@ -98,6 +98,13 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
   ;(cats || []).forEach((c) => { if (!orderedKeys.includes(c.category)) orderedKeys.push(c.category) })
   ;(tags || []).forEach((t) => { if (!orderedKeys.includes(t.tag_type)) orderedKeys.push(t.tag_type) })
 
+  // Build the meta line cleanly so there are no empty segments / double middots.
+  const metaParts: string[] = []
+  if (p.is_org && p.full_name) metaParts.push(`Contact: ${p.full_name}`)
+  if (p.primary_area) metaParts.push(p.primary_area)
+  if (p.offers_telehealth) metaParts.push('Telehealth available')
+  const metaLine = metaParts.join(' · ')
+
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: BRAND.pageBg, minHeight: '100vh' }}>
       <RecordProfileView providerId={id} />
@@ -106,11 +113,12 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
 
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '28px 40px 64px' }}>
 
-        <div style={{ background: 'white', borderRadius: 18, border: '0.5px solid ' + hairline, boxShadow: cardShadow, padding: 36, position: 'relative' }}>
+        <div style={{ background: 'white', borderRadius: 18, border: '0.5px solid ' + hairline, boxShadow: cardShadow, padding: 36 }}>
 
-          <div style={{ position: 'absolute', top: 24, right: 24, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <img src="/vetted.svg" alt="Vetted" style={{ height: 26, width: 'auto', display: 'block' }} />
-            {isEndorsed && <img src="/endorsed.svg" alt="Peer endorsed" style={{ height: 26, width: 'auto', display: 'block' }} />}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
+            <img src="/vetted.svg" alt="Vetted" style={{ height: 28, width: 'auto', display: 'block' }} />
+            {isEndorsed && <img src="/endorsed.svg" alt="Peer endorsed" style={{ height: 28, width: 'auto', display: 'block' }} />}
+            {showSupporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 28, width: 'auto', display: 'block' }} />}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
@@ -121,14 +129,11 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
                 <span style={{ fontSize: 32, fontWeight: 600, color: teal }}>{(p.full_name || '?').charAt(0).toUpperCase()}</span>
               )}
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <h1 style={{ fontFamily: SERIF, fontSize: 31, fontWeight: 600, color: dark, marginBottom: 4, letterSpacing: '-0.01em', lineHeight: 1.1 }}>
                 {p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}
               </h1>
-              <div style={{ fontSize: 14, color: '#888' }}>
-                {p.is_org && p.full_name ? `Contact: ${p.full_name} · ` : ''}
-                {p.primary_area}{p.offers_telehealth ? ' · Telehealth available' : ''}
-              </div>
+              {metaLine && <div style={{ fontSize: 14, color: '#888' }}>{metaLine}</div>}
               {p.availability_status === 'accepting' && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', marginTop: 8, fontSize: 12, fontWeight: 500, padding: '4px 11px', borderRadius: 99, background: 'white', border: '0.5px solid ' + hairline, color: '#5f6b6d' }}>
                   <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#5a9b6b', marginRight: 6 }} />Accepting new clients
@@ -144,11 +149,6 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
                 )}
                 <PeerRecommendButton profileProviderId={id} />
               </div>
-              {showSupporter && (
-                <div style={{ marginTop: 12 }}>
-                  <img src="/Supporter.svg" alt="Network supporter" style={{ height: 32, width: 'auto', display: 'block' }} />
-                </div>
-              )}
             </div>
           </div>
 
