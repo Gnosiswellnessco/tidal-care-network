@@ -351,9 +351,14 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
 
       <SiteHeader right={headerRight} />
 
-      <section style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 40px 8px' }}>
-        <h1 style={{ fontFamily: SERIF, fontSize: 34, fontWeight: 600, color: dark, marginBottom: 6, letterSpacing: '-0.01em' }}>Provider directory</h1>
-        <p style={{ fontSize: 15, color: '#6b7577' }}>{filtered.length} of {providers.length} provider{providers.length === 1 ? '' : 's'} · check providers to build a referral</p>
+      <section style={{ maxWidth: 1000, margin: '0 auto', padding: '32px 40px 8px' }}>
+        <div style={{ borderBottom: '1.5px solid ' + dark, paddingBottom: 16 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '0.26em', textTransform: 'uppercase', color: '#a9925f' }}>The Network · South Carolina</div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginTop: 8, flexWrap: 'wrap' }}>
+            <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(30px, 7vw, 42px)', fontWeight: 600, color: dark, lineHeight: 1, letterSpacing: '-0.015em', margin: 0 }}>Find a provider</h1>
+            <div style={{ fontSize: 12.5, color: '#7a8688', paddingBottom: 4 }}>{filtered.length} of {providers.length} provider{providers.length === 1 ? '' : 's'} · check &ldquo;Refer&rdquo; to build a referral</div>
+          </div>
+        </div>
       </section>
 
       <section style={{ maxWidth: 1000, margin: '0 auto', padding: '8px 40px 0' }}>
@@ -518,7 +523,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Supporter</strong> — helps fund the network; not a quality or ranking signal</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <img src="/thumbs-up.svg" alt="Recommended" style={{ height: 16, width: 'auto' }} />
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#bd8254" aria-label="Recommended" style={{ display: 'block' }}><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
               <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Recommended</strong> — peers in the network recommend them based on direct experience</span>
             </div>
           </div>
@@ -590,7 +595,11 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                       {p.photo_url ? <img src={p.photo_url} alt={p.full_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 20, fontWeight: 600, color: teal }}>{(p.full_name || '?').charAt(0).toUpperCase()}</span>}
                     </div>
                     <div>
-                      <div style={{ fontFamily: SERIF, fontSize: 19, fontWeight: 600, color: dark, marginBottom: 2, letterSpacing: '-0.01em', lineHeight: 1.15 }}>{p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}</div>
+                      <div style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: dark, marginBottom: 2, letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+                        {p.is_org ? (p.practice_name || p.full_name) : (
+                          <>{p.full_name}{p.credentials ? <span style={{ fontStyle: 'italic', fontWeight: 500, color: '#46565a' }}>, {p.credentials}</span> : null}</>
+                        )}
+                      </div>
                       <div style={{ fontSize: 13, color: '#888' }}>{p.practice_name && !p.is_org ? `${p.practice_name} · ` : ''}{p.primary_area}</div>
                       {!p.is_org && (p.credential_classes?.length ?? 0) > 0 && (
                         <div style={{ marginTop: 5 }}><CredentialPill classes={p.credential_classes} /></div>
@@ -618,8 +627,8 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: '0.5px solid ' + hairline, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                     <RatingDisplay avg={p.rating_avg ?? null} count={p.rating_count ?? 0} size={14} />
                     {recCount > 0 && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: teal, background: mint, padding: '3px 9px', borderRadius: 999 }}>
-                        <img src="/thumbs-up.svg" alt="" style={{ height: 13, width: 'auto', display: 'block' }} />
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#9a6840', background: '#f3ebdf', padding: '3px 9px', borderRadius: 999 }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
                         {recCount}
                       </span>
                     )}

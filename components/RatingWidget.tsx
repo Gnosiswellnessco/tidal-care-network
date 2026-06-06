@@ -20,7 +20,7 @@ function Stars({ value, size = 18, onPick, interactive }: { value: number; size?
             onMouseLeave={interactive ? () => setHover(0) : undefined}
             style={{ cursor: interactive ? 'pointer' : 'default', lineHeight: 1 }}
           >
-            <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? '#e8b54a' : 'none'} stroke={filled ? '#e8b54a' : '#c9c6bd'} strokeWidth="2" strokeLinejoin="round">
+            <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? '#bd8254' : 'none'} stroke={filled ? '#bd8254' : '#c9c6bd'} strokeWidth="2" strokeLinejoin="round">
               <path d="M12 2l3 6.5 7 .8-5.2 4.8 1.4 6.9L12 17.8 5.4 21l1.4-6.9L1.6 9.3l7-.8z" />
             </svg>
           </span>

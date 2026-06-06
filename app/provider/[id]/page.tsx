@@ -185,8 +185,8 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
               <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <RatingDisplay avg={ratingAvg} count={ratingCount} size={18} />
                 {(recommendCount || 0) > 0 && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: teal, background: mint, padding: '4px 11px', borderRadius: 999 }}>
-                    <img src="/thumbs-up.svg" alt="" style={{ height: 15, width: 'auto', display: 'block' }} />
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#9a6840', background: '#f3ebdf', padding: '4px 11px', borderRadius: 999 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
                     {recommendCount} peer recommendation{recommendCount === 1 ? '' : 's'}
                   </span>
                 )}
@@ -325,16 +325,18 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
 
         </div>
 
-        <p style={{ textAlign: 'center', fontSize: 12.5, color: '#9aa0a1', marginTop: 18, lineHeight: 1.6 }}>
-          See something out of date or incorrect?{' '}
+        <div style={{ maxWidth: 420, margin: '20px auto 0', paddingTop: 18, borderTop: '0.5px solid ' + hairline, textAlign: 'center' }}>
           <a
-            href={`mailto:info@tidalcare.org?subject=${encodeURIComponent('Inaccurate listing: ' + p.full_name)}&body=${encodeURIComponent('Please describe what is inaccurate about this provider listing:\n\nProvider: ' + p.full_name + '\n\n')}`}
-            style={{ color: teal, textDecoration: 'underline' }}
+            href={`mailto:info@tidalcare.org?subject=${encodeURIComponent('Suggested correction: ' + p.full_name)}&body=${encodeURIComponent('Please describe what should be corrected on this provider listing:\n\nProvider: ' + p.full_name + '\n\n')}`}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, color: '#7a8688', textDecoration: 'none' }}
           >
-            Report this profile as inaccurate
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+              <line x1="4" y1="22" x2="4" y2="15" />
+            </svg>
+            <span>Something not right? <span style={{ color: teal, textDecoration: 'underline' }}>Suggest a correction</span></span>
           </a>
-          .
-        </p>
+        </div>
       </div>
     </main>
   )
