@@ -12,6 +12,7 @@ import PremiumInsights from '@/components/PremiumInsights'
 import PostComposer from '@/components/PostComposer'
 import UpgradeButtons from '@/components/UpgradeButtons'
 import AccountStatusBanner from '@/components/AccountStatusBanner'
+import CorrectionBanner from '@/components/CorrectionBanner'
 import { getAdminInfo } from '@/lib/admin-auth'
 import { isPremium, priceLabel, PREMIUM_ACCENT, PREMIUM_ACCENT_DARK } from '@/lib/subscription'
 
@@ -27,13 +28,21 @@ export default async function DashboardPage() {
 
   const { data: provider } = await supabase
     .from('providers')
-    .select('id, full_name, vetting_status, is_org, is_premium, subscription_status, subscription_interval, subscription_price_cents, subscription_renews_at, booking_type, booking_value, intro_video_url, extended_bio, custom_links, show_supporter_badge, listing_status, status_reason_code, status_note, status_changed_at, is_self_paused, last_certified_at')
+    .select('id, full_name, vetting_status, is_org, is_premium, subscription_status, subscription_interval, subscription_price_cents, subscription_renews_at, booking_type, booking_value, intro_video_url, extended_bio, custom_links, show_supporter_badge, listing_status, status_reason_code, status_note, status_changed_at, is_self_paused, last_certified_at, hidden_by_report')
     .eq('user_id', user.id)
     .maybeSingle()
 
   if (!provider) {
     redirect('/join')
   }
+
+  // Open correction reports for this provider (for the action-needed banner).
+  const { data: correctionReports } = await supabase
+    .from('profile_correction_reports')
+    .select('id, reason, details, deadline_at, created_at')
+    .eq('provider_id', provider.id)
+    .eq('status', 'open')
+    .order('created_at', { ascending: true })
 
   // Keep listing status in sync with credential expiry, then refresh those fields.
   await supabase.rpc('tcn_sync_credential_listing', { p_provider_id: provider.id })
@@ -208,6 +217,8 @@ export default async function DashboardPage() {
 
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '24px 40px' }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: '#2c4d52', marginBottom: 16 }}>Your dashboard</h1>
+
+        <CorrectionBanner reports={correctionReports || []} hidden={!!provider.hidden_by_report} />
 
         <AccountStatusBanner
           vettingStatus={provider.vetting_status}

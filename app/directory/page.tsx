@@ -13,6 +13,7 @@ export default async function DirectoryPage() {
     .eq('is_active', true)
     .neq('listing_status', 'hidden')
     .eq('is_self_paused', false)
+    .eq('hidden_by_report', false)
     .order('full_name')
 
   const ids = (rawProviders || []).map((p) => p.id)

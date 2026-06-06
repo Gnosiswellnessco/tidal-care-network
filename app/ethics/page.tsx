@@ -10,7 +10,7 @@ export default function EthicsPage() {
       effective="May 27, 2026"
     >
       <H2>Purpose of this agreement</H2>
-      <P>The Tidal Care Network is committed to ensuring that all providers in its network deliver care that is ethical, inclusive, equitable, and trauma-informed. This Ethics Attestation Agreement sets forth the standards that every Provider must actively uphold as a condition of participation in the Network.</P>
+      <P>The Tidal Care Network is committed to ensuring that all providers in its network deliver care that is ethical, inclusive, and equitable. This Ethics Attestation Agreement sets forth the standards that every Provider must actively uphold as a condition of participation in the Network.</P>
       <P>This agreement is not a formality. Each condition below reflects a meaningful commitment to the clients and communities served by this network. Providers are asked to read each statement carefully and attest honestly.</P>
 
       <H2>Ethics conditions</H2>
@@ -33,7 +33,7 @@ export default function EthicsPage() {
       <UL>
         <LI>Using clients&apos; correct names and pronouns without exception;</LI>
         <LI>Understanding the specific health and mental health needs of LGBTQ+ communities;</LI>
-        <LI>Creating a welcoming environment free from heteronormative or cisnormative assumptions;</LI>
+        <LI>Creating a welcoming environment free from harmful assumptions;</LI>
         <LI>Referring to affirming specialists when a client&apos;s needs are outside my scope.</LI>
       </UL>
 

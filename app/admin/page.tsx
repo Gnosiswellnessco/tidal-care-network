@@ -104,6 +104,41 @@ async function setCompNote(formData: FormData) {
   revalidatePath('/admin')
 }
 
+async function dismissCorrection(formData: FormData) {
+  'use server'
+  const id = formData.get('id') as string
+  const providerId = formData.get('providerId') as string
+  const admin = createAdminClient()
+  await admin.from('profile_correction_reports').update({ status: 'dismissed' }).eq('id', id)
+  // If no open reports remain, un-hide the provider.
+  const { count } = await admin
+    .from('profile_correction_reports')
+    .select('id', { count: 'exact', head: true })
+    .eq('provider_id', providerId)
+    .eq('status', 'open')
+  if (!count || count === 0) {
+    await admin.from('providers').update({ hidden_by_report: false }).eq('id', providerId)
+  }
+  revalidatePath('/admin')
+}
+
+async function extendCorrection(formData: FormData) {
+  'use server'
+  const id = formData.get('id') as string
+  const admin = createAdminClient()
+  const newDeadline = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+  await admin.from('profile_correction_reports').update({ deadline_at: newDeadline }).eq('id', id)
+  revalidatePath('/admin')
+}
+
+async function unhideProvider(formData: FormData) {
+  'use server'
+  const providerId = formData.get('providerId') as string
+  const admin = createAdminClient()
+  await admin.from('providers').update({ hidden_by_report: false }).eq('id', providerId)
+  revalidatePath('/admin')
+}
+
 async function removePost(formData: FormData) {
   'use server'
   const supabase = await createClient()
@@ -245,6 +280,13 @@ export default async function AdminPage() {
     .select('*')
     .order('created_at', { ascending: false })
   const openReports = (boardReports || []).filter((r) => r.status === 'new' || r.status === 'reviewing')
+
+  // Profile correction reports (self-running fix-or-hide queue).
+  const { data: correctionReports } = await admin
+    .from('profile_correction_reports')
+    .select('*')
+    .order('created_at', { ascending: false })
+  const openCorrections = (correctionReports || []).filter((r) => r.status === 'open')
 
   // --- Vetting data for pending applicants: credential files (signed) + endorsement status ---
   const pendingIds = pending.map((p) => p.id)
@@ -501,6 +543,62 @@ export default async function AdminPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        <h2 style={{ fontSize: 18, fontWeight: 600, color: '#2c4d52', marginBottom: 12 }}>Profile correction reports</h2>
+        <p style={{ fontSize: 13, color: '#888', marginTop: -6, marginBottom: 12, lineHeight: 1.5 }}>
+          Public reports of inaccurate listings. The provider is notified automatically and has 14 days to confirm a correction, or their listing is hidden until they do — this runs on its own. Use the overrides only when you need to step in: dismiss a bad-faith report, give a provider more time, or restore a hidden listing.
+        </p>
+        {(!correctionReports || correctionReports.length === 0) ? (
+          <p style={{ fontSize: 14, color: '#888', marginBottom: 32 }}>No correction reports.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
+            {correctionReports.map((r) => {
+              const dl = new Date(r.deadline_at).getTime()
+              const daysLeft = Math.ceil((dl - Date.now()) / (1000 * 60 * 60 * 24))
+              const overdueOpen = r.status === 'open' && daysLeft <= 0
+              return (
+                <div key={r.id} style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 20, opacity: r.status === 'open' ? 1 : 0.6 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: 260 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 16, fontWeight: 600, color: '#2c4d52' }}>{providerNameById.get(r.provider_id) || 'Unknown provider'}</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '2px 8px', borderRadius: 99, background: r.status === 'open' ? (overdueOpen ? '#fbeef0' : '#fff3d6') : r.status === 'certified' ? '#e6f0ea' : '#eee', color: r.status === 'open' ? (overdueOpen ? '#b3504f' : '#92610a') : r.status === 'certified' ? '#2f6b4f' : '#666' }}>
+                          {r.status === 'open' ? (overdueOpen ? 'hidden — overdue' : `open · ${daysLeft}d left`) : r.status}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#2c4d52', marginTop: 6 }}>{r.reason}</div>
+                      {r.details && <div style={{ fontSize: 13.5, color: '#666', marginTop: 3, lineHeight: 1.5 }}>{r.details}</div>}
+                      <div style={{ fontSize: 12, color: '#999', marginTop: 6 }}>
+                        Reported {new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {r.reporter_email ? ` · by ${r.reporter_email}` : ' · anonymous'}
+                        {r.certified_at ? ` · certified ${new Date(r.certified_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                      </div>
+                    </div>
+                    {r.status === 'open' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 150 }}>
+                        <form action={extendCorrection}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <button type="submit" style={{ fontSize: 13, fontWeight: 500, padding: '8px 14px', borderRadius: 8, border: '1px solid #d4d2ca', background: 'white', color: '#444', cursor: 'pointer', width: '100%' }}>Extend 14 days</button>
+                        </form>
+                        <form action={dismissCorrection}>
+                          <input type="hidden" name="id" value={r.id} />
+                          <input type="hidden" name="providerId" value={r.provider_id} />
+                          <button type="submit" style={{ fontSize: 13, fontWeight: 500, padding: '8px 14px', borderRadius: 8, border: 'none', background: '#3e6a70', color: 'white', cursor: 'pointer', width: '100%' }}>Dismiss report</button>
+                        </form>
+                        {overdueOpen && (
+                          <form action={unhideProvider}>
+                            <input type="hidden" name="providerId" value={r.provider_id} />
+                            <button type="submit" style={{ fontSize: 13, fontWeight: 500, padding: '8px 14px', borderRadius: 8, border: '1px solid #cdd9d6', background: '#eef2f0', color: '#2c4d52', cursor: 'pointer', width: '100%' }}>Un-hide listing</button>
+                          </form>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
 
