@@ -83,6 +83,10 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   const [recBusy, setRecBusy] = useState<string | null>(null)
   const [view, setView] = useState<'list' | 'map'>('list')
 
+  // Member "Save to my list" (separate from the provider referral-sources heart)
+  const [saved, setSaved] = useState<string[]>([])
+  const [saveBusy, setSaveBusy] = useState<string | null>(null)
+
   const specRef = useRef<HTMLDivElement>(null)
   const insRef = useRef<HTMLDivElement>(null)
   const popRef = useRef<HTMLDivElement>(null)
@@ -103,6 +107,19 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
     const supabase = createClient()
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return
+      // Saved list works for any signed-in user (member or provider).
+      const { data: mySaved } = await supabase.from('member_provider_list').select('provider_id').eq('user_id', user.id)
+      setSaved((mySaved || []).map((s) => s.provider_id))
+      // If they were bounced through login by tapping Save while logged out,
+      // finish that save now and tidy the URL.
+      const params = new URLSearchParams(window.location.search)
+      const toSave = params.get('save')
+      if (toSave) {
+        await supabase.from('member_provider_list').upsert({ user_id: user.id, provider_id: toSave }, { onConflict: 'user_id,provider_id' })
+        setSaved((cur) => cur.includes(toSave) ? cur : [...cur, toSave])
+        params.delete('save')
+        window.history.replaceState({}, '', `${window.location.pathname}${params.toString() ? '?' + params.toString() : ''}`)
+      }
       const { data: me } = await supabase.from('providers').select('id, vetting_status, is_active').eq('user_id', user.id).maybeSingle()
       if (!me) return
       setMyProviderId(me.id)
@@ -134,6 +151,27 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
       await supabase.from('provider_favorites').insert({ owner_provider_id: myProviderId, favorite_provider_id: targetId })
       setFavorites((cur) => [...cur, targetId])
     }
+  }
+
+  // Member save: bookmark a provider to a personal list. Requires sign-in;
+  // tapping while logged out routes through login and auto-saves on return.
+  async function toggleSave(targetId: string) {
+    if (saveBusy) return
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      window.location.href = `/member-login?next=${encodeURIComponent('/directory?save=' + targetId)}`
+      return
+    }
+    setSaveBusy(targetId)
+    if (saved.includes(targetId)) {
+      await supabase.from('member_provider_list').delete().eq('user_id', user.id).eq('provider_id', targetId)
+      setSaved((cur) => cur.filter((id) => id !== targetId))
+    } else {
+      await supabase.from('member_provider_list').upsert({ user_id: user.id, provider_id: targetId }, { onConflict: 'user_id,provider_id' })
+      setSaved((cur) => cur.includes(targetId) ? cur : [...cur, targetId])
+    }
+    setSaveBusy(null)
   }
 
   async function toggleRecommend(targetId: string) {
@@ -178,9 +216,14 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
   const filtered = useMemo(() => {
     return providers.filter((p) => {
       if (search.trim()) {
-        const q = search.toLowerCase()
-        const hay = `${p.full_name} ${p.practice_name || ''} ${p.bio || ''} ${(p.provider_insurance || []).join(' ')} ${(p.provider_populations || []).join(' ')} ${p.provider_tags.map((t) => t.tag_value).join(' ')}`.toLowerCase()
-        if (!hay.includes(q)) return false
+        // Forgiving search: every word the person types must appear somewhere
+        // across the provider's name, credentials, practice, area, bio,
+        // specialties, categories, insurance, and populations — so "spanish
+        // trauma teen" narrows correctly even though those words live in
+        // different fields.
+        const hay = `${p.full_name} ${p.credentials || ''} ${p.practice_name || ''} ${p.primary_area || ''} ${p.bio || ''} ${(p.provider_insurance || []).join(' ')} ${(p.provider_populations || []).join(' ')} ${p.provider_tags.map((t) => t.tag_value).join(' ')} ${p.provider_categories.map((c) => categoryLabel(c.category)).join(' ')}`.toLowerCase()
+        const tokens = search.toLowerCase().split(/\s+/).filter(Boolean)
+        if (!tokens.every((t) => hay.includes(t))) return false
       }
       if (category && !p.provider_categories.some((c) => c.category === category)) return false
       if (specialties.length > 0) {
@@ -282,7 +325,8 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
         </>
       ) : (
         <>
-          <Link href="/login" style={{ fontSize: 14, color: dark, textDecoration: 'none' }}>Provider login</Link>
+          <Link href="/saved" style={{ fontSize: 14, color: '#4a5557', textDecoration: 'none' }}>Saved</Link>
+          <Link href="/member-login" style={{ fontSize: 14, color: dark, textDecoration: 'none' }}>Sign in</Link>
           <Link href="/login?next=/join" style={{ fontSize: 14, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>Join the network</Link>
         </>
       )}
@@ -491,6 +535,11 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               return (
               <div key={p.id} style={{ background: 'white', borderRadius: 14, border: isSelected(p.id) ? `2px solid ${teal}` : '0.5px solid ' + hairline, boxShadow: cardShadow, padding: 24, position: 'relative' }}>
                 <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {!myProviderId && (
+                    <button onClick={() => toggleSave(p.id)} disabled={saveBusy === p.id} title={saved.includes(p.id) ? 'Saved to your list' : 'Save to your list'} style={{ background: 'none', border: 'none', cursor: saveBusy === p.id ? 'default' : 'pointer', padding: 0, lineHeight: 1, display: 'flex', opacity: saveBusy === p.id ? 0.5 : 1 }}>
+                      <svg width="19" height="19" viewBox="0 0 24 24" fill={saved.includes(p.id) ? teal : 'none'} stroke={saved.includes(p.id) ? teal : '#c9c6bd'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                    </button>
+                  )}
                   {myProviderId && myProviderId !== p.id && (
                     <button onClick={() => toggleFavorite(p.id)} title={favorites.includes(p.id) ? 'Remove from referral sources' : 'Add to referral sources'} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1, display: 'flex' }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill={favorites.includes(p.id) ? '#d6536d' : 'none'} stroke={favorites.includes(p.id) ? '#d6536d' : '#c9c6bd'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>

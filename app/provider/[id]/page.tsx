@@ -7,6 +7,7 @@ import { isPremium, showsSupporterBadge, hasBooking, bookingAction, PREMIUM_ACCE
 import PeerRecommendButton from '@/components/PeerRecommendButton'
 import RecordProfileView from '@/components/RecordProfileView'
 import SiteHeader from '@/components/SiteHeader'
+import SaveButton from '@/components/SaveButton'
 import { BRAND, SERIF } from '@/lib/brand'
 
 export const dynamic = 'force-dynamic'
@@ -194,6 +195,10 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
               {booking.label}
             </a>
           )}
+
+          <div style={{ marginBottom: 24 }}>
+            <SaveButton providerId={id} />
+          </div>
 
           {p.bio && <p style={{ fontSize: 15, lineHeight: 1.7, color: '#444', marginBottom: premium && p.extended_bio ? 12 : 24 }}>{p.bio}</p>}
           {premium && p.extended_bio && <p style={{ fontSize: 15, lineHeight: 1.7, color: '#444', marginBottom: 24 }}>{p.extended_bio}</p>}
