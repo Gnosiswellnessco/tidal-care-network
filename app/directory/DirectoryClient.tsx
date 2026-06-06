@@ -11,6 +11,7 @@ import SiteHeader from '@/components/SiteHeader'
 import { BRAND, SERIF } from '@/lib/brand'
 import { REGIONS, METROS_BY_REGION, regionForZip, type Region } from '@/lib/sc-regions'
 import CredentialPill from '@/components/CredentialPill'
+import { CREDENTIAL_CLASSES, CREDENTIAL_CLASS_ORDER, CREDENTIAL_DISCLAIMER, NETWORK_CREDENTIAL_NOTE } from '@/lib/care-families'
 import { showsSupporterBadge, hasBooking, bookingAction, PREMIUM_ACCENT } from '@/lib/subscription'
 
 
@@ -52,6 +53,7 @@ type Provider = {
 
 export default function DirectoryClient({ providers }: { providers: Provider[] }) {
   const [search, setSearch] = useState('')
+  const [aboutOpen, setAboutOpen] = useState(false)
   const [agreed, setAgreed] = useState(true)
   const [category, setCategory] = useState('')
   const [specialties, setSpecialties] = useState<string[]>([])
@@ -367,6 +369,38 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
       </section>
 
 
+      <section style={{ maxWidth: 1000, margin: '0 auto', padding: '0 40px 0' }}>
+        <div style={{ background: 'white', border: '0.5px solid ' + hairline, borderRadius: 12, overflow: 'hidden' }}>
+          <button
+            type="button"
+            onClick={() => setAboutOpen((v) => !v)}
+            aria-expanded={aboutOpen}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '15px 18px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+              <span style={{ width: 24, height: 24, borderRadius: '50%', background: BRAND.mint, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: teal, fontSize: 13, flex: 'none' }}>?</span>
+              <span style={{ fontSize: 14.5, fontWeight: 600, color: dark }}>About our providers &amp; credentials</span>
+            </span>
+            <span style={{ fontSize: 12, color: BRAND.champagneDark, transform: aboutOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>⌄</span>
+          </button>
+          {aboutOpen && (
+            <div style={{ padding: '0 18px 18px' }}>
+              <p style={{ fontSize: 13.5, color: '#54625f', lineHeight: 1.6, margin: '0 0 14px' }}>{NETWORK_CREDENTIAL_NOTE}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 14, borderTop: '0.5px solid ' + hairline }}>
+                {CREDENTIAL_CLASS_ORDER.map((c) => (
+                  <div key={c} style={{ fontSize: 12.5, color: '#4a5557', lineHeight: 1.5 }}>
+                    <strong style={{ color: dark }}>{CREDENTIAL_CLASSES[c].label}</strong> — {CREDENTIAL_CLASSES[c].short}
+                  </div>
+                ))}
+              </div>
+              <p style={{ fontSize: 12, color: '#9aa0a1', lineHeight: 1.6, margin: '14px 0 0' }}>{CREDENTIAL_DISCLAIMER}</p>
+              <Link href="/how-care-works" style={{ display: 'inline-block', marginTop: 14, fontSize: 13, color: teal, textDecoration: 'none' }}>How care works in our network →</Link>
+            </div>
+          )}
+        </div>
+      </section>
+
+
       <section style={{ maxWidth: 1000, margin: '0 auto', padding: '16px 40px 16px' }}>
         <div style={{ background: 'white', borderRadius: 14, border: '0.5px solid ' + hairline, boxShadow: cardShadow, padding: 16 }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
@@ -480,8 +514,12 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Endorsed</strong> — vouched for by a peer provider</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <img src="/Supporter.svg" alt="Network supporter" style={{ height: 32, width: 'auto' }} />
+              <img src="/Supporter.svg" alt="Network supporter" style={{ height: 18, width: 'auto' }} />
               <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Supporter</strong> — helps fund the network; not a quality or ranking signal</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <img src="/thumbs-up.svg" alt="Recommended" style={{ height: 16, width: 'auto' }} />
+              <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Recommended</strong> — a peer provider vouches for them as someone they&apos;d refer to</span>
             </div>
           </div>
         </div>

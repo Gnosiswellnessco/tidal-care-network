@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { BRAND } from '@/lib/brand'
 import {
   CREDENTIAL_CLASSES,
+  CREDENTIAL_DISCLAIMER,
   normalizeCredentialClasses,
   type CredentialClass,
 } from '@/lib/care-families'
@@ -110,6 +111,9 @@ export default function CredentialPill({
               </div>
             </div>
           ))}
+          <div style={{ padding: '10px 14px', borderTop: '0.5px solid ' + BRAND.hairline, background: BRAND.pageBg }}>
+            <div style={{ fontSize: 11.5, color: '#7a6a55', lineHeight: 1.55 }}>{CREDENTIAL_DISCLAIMER}</div>
+          </div>
         </div>
       )}
     </div>

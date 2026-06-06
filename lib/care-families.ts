@@ -14,28 +14,32 @@ export const CREDENTIAL_CLASSES: Record<
 > = {
   licensed: {
     label: 'Licensed',
-    short: 'Holds a state license with defined scope and board oversight.',
+    short: 'Generally means the person holds a state license with a defined scope and board oversight.',
     meaning:
-      'Holds a current state license with a defined scope of practice and oversight by a licensing board.',
+      'Generally means the person holds a current state license with a defined scope of practice and oversight by a licensing board.',
     limits: 'Scope of practice and services offered vary by license type and state.',
   },
   certified: {
     label: 'Certified / Registered',
-    short: 'Credentialed by a professional body; scope varies by credential.',
+    short: 'Generally means the person is credentialed by a professional body; scope varies by credential.',
     meaning:
-      'Holds a certification or registration from a professional body, reflecting training and standards in their field.',
+      'Generally means the person holds a certification or registration from a professional body, reflecting training and standards in their field.',
     limits:
       'A certification or registration is not a state license. Scope, oversight, and rigor vary by credential.',
   },
   peer: {
     label: 'Peer / lived experience',
-    short: 'A distinct, valued role grounded in lived experience.',
+    short: 'A distinct, valued role grounded in lived experience and peer training.',
     meaning:
-      'Supports others through lived experience and specialized peer training — a distinct and valued role in care.',
+      'Generally means the person supports others through lived experience and specialized peer training — a distinct and valued role in care.',
     limits:
       'Not a licensed clinician. Does not diagnose, prescribe, or provide medical or psychological treatment.',
   },
 }
+
+// Shared liability-protective line shown wherever credential labels are explained.
+export const CREDENTIAL_DISCLAIMER =
+  'A label describes a credential type, not a guarantee about any individual; please verify any provider\u2019s current standing yourself.'
 
 // Plain-language note shown wherever credentials are explained. Reassures people
 // that the network spans licensed, certified/registered, and peer providers —

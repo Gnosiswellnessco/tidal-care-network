@@ -2,29 +2,39 @@ import { BRAND, SERIF } from '@/lib/brand'
 import {
   CARE_FAMILIES,
   CREDENTIAL_CLASSES,
-  CREDENTIAL_CLASS_ORDER,
-  NETWORK_CREDENTIAL_NOTE,
+  CREDENTIAL_DISCLAIMER,
   categoryLabel,
   type CredentialClass,
 } from '@/lib/care-families'
 
-// Neutral pill palette — matches CredentialPill. Deliberately not good/bad.
-const PILL: Record<CredentialClass, React.CSSProperties> = {
-  licensed: { background: '#e6eef0', color: '#2c4d52' },
-  certified: { background: '#efe9dc', color: '#7a6322' },
-  peer: { background: '#eceae4', color: '#5a564c' },
-}
-
-const pillBase: React.CSSProperties = {
+const eyebrow: React.CSSProperties = {
+  fontFamily: 'system-ui, -apple-system, sans-serif',
   fontSize: 10.5,
   fontWeight: 600,
-  letterSpacing: '0.02em',
-  padding: '3px 9px',
-  borderRadius: 99,
-  display: 'inline-block',
-  marginRight: 5,
-  marginBottom: 5,
-  lineHeight: 1.4,
+  letterSpacing: '0.26em',
+  textTransform: 'uppercase',
+  color: '#a9925f',
+}
+
+const tag: React.CSSProperties = {
+  fontFamily: 'system-ui, -apple-system, sans-serif',
+  fontSize: 9.5,
+  fontWeight: 600,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+  color: '#7a8688',
+}
+
+// Short tag labels for the right-hand column (full meanings live in the
+// directory's About panel and on each provider's profile).
+const TAG_LABEL: Record<CredentialClass, string> = {
+  licensed: 'Licensed',
+  certified: 'Certified',
+  peer: 'Peer',
+}
+
+function pad(n: number): string {
+  return String(n).padStart(2, '0')
 }
 
 export default function CareFamiliesExplainer({
@@ -33,55 +43,69 @@ export default function CareFamiliesExplainer({
   heading?: boolean
 }) {
   return (
-    <section style={{ maxWidth: 900, margin: '0 auto', padding: '24px 32px' }}>
+    <section style={{ maxWidth: 680, margin: '0 auto', padding: '44px 36px 40px', fontFamily: SERIF }}>
       {heading && (
-        <div style={{ textAlign: 'center', maxWidth: 580, margin: '0 auto 22px' }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: BRAND.champagneDark, marginBottom: 6 }}>
-            Understanding the network
-          </div>
-          <h2 style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 600, color: BRAND.dark, margin: 0, letterSpacing: '-0.01em' }}>
-            The whole spectrum of care, by family
-          </h2>
-          <p style={{ fontSize: 14, color: '#5f6b6d', lineHeight: 1.6, margin: '8px 0 0' }}>
-            Our providers span many kinds of care. Here&apos;s how they group together — and the kinds of credentials you tend to find in each. The labels are neutral: each is a distinct, valued role.
+        <div style={{ textAlign: 'center' }}>
+          <div style={eyebrow}>Understanding the network</div>
+          <h1 style={{ fontFamily: SERIF, fontSize: 46, fontWeight: 600, color: BRAND.dark, lineHeight: 1.05, letterSpacing: '-0.015em', margin: '14px 0 0' }}>
+            The whole spectrum of care
+          </h1>
+          <div style={{ width: 42, height: 2, background: BRAND.champagne, margin: '22px auto 0' }} />
+          <p style={{ fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: 14.5, lineHeight: 1.75, color: '#54625f', maxWidth: 520, margin: '22px auto 0' }}>
+            Our providers span many kinds of care. Below is how they group together — and the credentials you tend to find in each. The labels are neutral: each is a distinct, valued role, suited to different needs.
           </p>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
-        {CARE_FAMILIES.map((fam) => (
-          <div key={fam.key} style={{ background: BRAND.cardBg, border: '0.5px solid ' + BRAND.hairline, borderRadius: 12, padding: '16px 17px' }}>
-            <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: BRAND.dark, margin: '0 0 4px' }}>{fam.label}</div>
-            <div style={{ fontSize: 12.5, color: '#5f6b6d', lineHeight: 1.55, margin: '0 0 11px' }}>
-              {fam.categoryKeys.map((k) => categoryLabel(k)).join(' · ')}
+      <div style={{ marginTop: heading ? 30 : 0 }}>
+        {CARE_FAMILIES.map((fam, i) => (
+          <div
+            key={fam.key}
+            style={{
+              display: 'flex',
+              gap: 20,
+              padding: '20px 0',
+              borderTop: '1px solid ' + BRAND.hairline,
+              borderBottom: i === CARE_FAMILIES.length - 1 ? '1px solid ' + BRAND.hairline : undefined,
+            }}
+          >
+            <div style={{ fontSize: 30, fontWeight: 500, color: '#cfc4a6', lineHeight: 1, minWidth: 42 }}>{pad(i + 1)}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 23, fontWeight: 600, color: BRAND.dark, lineHeight: 1.15 }}>{fam.label}</div>
+              <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: 12.5, color: '#6b7577', lineHeight: 1.6, marginTop: 4 }}>
+                {fam.categoryKeys.map((k) => categoryLabel(k)).join(' · ')}
+              </div>
             </div>
-            <div>
-              {fam.credentials.map((c) => (
-                <span key={c} style={{ ...pillBase, ...PILL[c] }}>{CREDENTIAL_CLASSES[c].label}</span>
+            <div style={{ textAlign: 'right', minWidth: 96, paddingTop: 5 }}>
+              {fam.credentials.map((c, j) => (
+                <div key={c} style={{ ...tag, marginTop: j === 0 ? 0 : 5 }}>{TAG_LABEL[c]}</div>
               ))}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Legend — what the credential labels mean */}
-      <div style={{ background: BRAND.cardBg, border: '0.5px solid ' + BRAND.hairline, borderRadius: 12, padding: '14px 17px', marginTop: 14 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: BRAND.champagneDark, marginBottom: 10 }}>
-          What the credential labels mean
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          {CREDENTIAL_CLASS_ORDER.map((c) => (
-            <div key={c} style={{ fontSize: 12.5, color: '#4a5557', lineHeight: 1.5 }}>
-              <span style={{ ...pillBase, ...PILL[c] }}>{CREDENTIAL_CLASSES[c].label}</span>
-              {CREDENTIAL_CLASSES[c].short}
-            </div>
-          ))}
-        </div>
-
-        <p style={{ fontSize: 12.5, color: '#5f6b6d', lineHeight: 1.6, margin: '14px 0 0', paddingTop: 14, borderTop: '0.5px solid ' + BRAND.hairline }}>
-          {NETWORK_CREDENTIAL_NOTE}
+      {/* A note on choosing care — pull quote */}
+      <div style={{ marginTop: 34, paddingLeft: 20, borderLeft: '2px solid ' + BRAND.champagne }}>
+        <div style={{ ...eyebrow, marginBottom: 8 }}>A note on choosing care</div>
+        <p style={{ fontFamily: SERIF, fontSize: 20, fontStyle: 'italic', fontWeight: 500, color: '#3a4a4c', lineHeight: 1.5, margin: 0 }}>
+          None of these is &ldquo;better&rdquo; or &ldquo;worse&rdquo; — they are different kinds of support. If you&rsquo;re unsure what&rsquo;s right for you, your doctor is a good person to ask.
         </p>
       </div>
+
+      {/* Compact key so the labels stay self-explanatory on this page */}
+      <div style={{ marginTop: 30, paddingTop: 18, borderTop: '1px solid ' + BRAND.hairline, display: 'flex', flexWrap: 'wrap', gap: '8px 22px' }}>
+        {(['licensed', 'certified', 'peer'] as CredentialClass[]).map((c) => (
+          <div key={c} style={{ fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: 11.5, color: '#6b7577', lineHeight: 1.5 }}>
+            <span style={{ ...tag, color: BRAND.dark, marginRight: 6 }}>{TAG_LABEL[c]}</span>
+            {CREDENTIAL_CLASSES[c].short}
+          </div>
+        ))}
+      </div>
+
+      <p style={{ fontFamily: 'system-ui, -apple-system, sans-serif', fontSize: 11.5, color: '#9aa0a1', lineHeight: 1.6, margin: '12px 0 0' }}>
+        {CREDENTIAL_DISCLAIMER}
+      </p>
     </section>
   )
 }
