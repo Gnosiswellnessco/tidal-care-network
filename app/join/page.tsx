@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES, INSURANCE_OPTIONS, AGE_GROUPS, POPULATIONS } from '@/lib/taxonomy'
 import { useMergedTags } from '@/hooks/useTaxonomy'
 import { CategoryIcon } from '@/components/CategoryIcon'
+import { CREDENTIAL_CLASS_ORDER, CREDENTIAL_CLASSES } from '@/lib/care-families'
 
 const teal = '#3e6a70'
 const dark = '#2c4d52'
@@ -41,6 +42,8 @@ export default function JoinPage() {
   const [practiceType, setPracticeType] = useState('')
   const [licenseNumber, setLicenseNumber] = useState('')
   const [credentialType, setCredentialType] = useState('')
+  const [credentialClasses, setCredentialClasses] = useState<string[]>([])
+  const [credClassesTouched, setCredClassesTouched] = useState(false)
   const [npiChecking, setNpiChecking] = useState(false)
   const [npiCheck, setNpiCheck] = useState<{ status: string; message: string; registryName?: string; taxonomy?: string } | null>(null)
   const [npiNumber, setNpiNumber] = useState('')
@@ -84,6 +87,20 @@ export default function JoinPage() {
   const isOrgMode = practiceType === 'group_owner' || practiceType === 'institution'
   const isTelehealthOnly = telehealth === 'Telehealth only'
   const needsEndorsement = !isOrgMode && credentialType !== '' && credentialType !== 'State license'
+
+  // Seed a sensible default credential class from the chosen credential type,
+  // but only until the provider edits the selection themselves.
+  useEffect(() => {
+    if (credClassesTouched) return
+    if (credentialType === 'State license') setCredentialClasses(['licensed'])
+    else if (credentialType === 'Certification' || credentialType === 'Registration') setCredentialClasses(['certified'])
+    else setCredentialClasses([])
+  }, [credentialType, credClassesTouched])
+
+  function toggleCredentialClass(c: string) {
+    setCredClassesTouched(true)
+    setCredentialClasses((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]))
+  }
 
   useEffect(() => {
     const supabase = createClient()
@@ -189,6 +206,7 @@ export default function JoinPage() {
       if (!isOrgMode && !credentials.trim()) return 'Please enter your credentials or title.'
       if (!practiceName.trim() && isOrgMode) return 'Please enter your organization name.'
       if (!credentialType) return 'Please select your credential type.'
+      if (!isOrgMode && credentialClasses.length === 0) return 'Please select how clients should see your credentials.'
       if (credentialType === 'State license' && !licenseNumber.trim()) return 'Please enter your license number.'
       if (credFiles.length === 0) return 'Please upload at least one license or certification document.'
       if (credFiles.some((f) => f.kind === 'license' && !f.expirationDate)) return 'Please add the expiration date for each license. (Certifications without an expiration can be left blank.)'
@@ -265,6 +283,7 @@ export default function JoinPage() {
         practice_type: practiceType || null,
         license_number: licenseNumber || null,
         credential_type: credentialType || null,
+        credential_classes: credentialClasses,
         npi_verified_status: npiCheck?.status || null,
         npi_registry_name: npiCheck?.registryName || null,
         npi_registry_taxonomy: npiCheck?.taxonomy || null,
@@ -461,6 +480,32 @@ export default function JoinPage() {
               <input style={inp} value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder={isOrgMode ? 'Group NPI or license number' : 'e.g. LCS-12345, OT-9876'} />
               {credentialType && credentialType !== 'State license' && <p style={{ fontSize: 11, color: '#999', marginTop: 5 }}>Optional — many certifications don&apos;t have a number. Leave blank if yours doesn&apos;t.</p>}
             </Field>
+
+            {!isOrgMode && (
+              <Field label="How should clients see your credentials?" required>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {CREDENTIAL_CLASS_ORDER.map((c) => {
+                    const active = credentialClasses.includes(c)
+                    return (
+                      <button
+                        type="button"
+                        key={c}
+                        onClick={() => toggleCredentialClass(c)}
+                        aria-pressed={active}
+                        style={{ textAlign: 'left', display: 'flex', gap: 11, alignItems: 'flex-start', padding: '11px 13px', borderRadius: 9, border: '1px solid ' + (active ? teal : '#e5e3dc'), background: active ? mint : 'white', cursor: 'pointer' }}
+                      >
+                        <span style={{ width: 17, height: 17, flex: 'none', marginTop: 1, borderRadius: 5, border: '1.5px solid ' + (active ? teal : '#c4c2ba'), background: active ? teal : 'white', color: 'white', fontSize: 11, lineHeight: '14px', textAlign: 'center' }}>{active ? '✓' : ''}</span>
+                        <span>
+                          <span style={{ fontSize: 13.5, fontWeight: 600, color: dark }}>{CREDENTIAL_CLASSES[c].label}</span>
+                          <span style={{ display: 'block', fontSize: 12, color: '#6b7577', lineHeight: 1.5, marginTop: 2 }}>{CREDENTIAL_CLASSES[c].meaning}</span>
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <p style={{ fontSize: 11, color: '#999', marginTop: 6, lineHeight: 1.5 }}>Select all that apply — you can hold more than one (for example, a licensed clinician who is also a certified practitioner). This shows as a neutral label on your profile so people understand your role.</p>
+              </Field>
+            )}
             {!isOrgMode && (
               <Field label="NPI number (if applicable)">
                 <div style={{ display: 'flex', gap: 8 }}>

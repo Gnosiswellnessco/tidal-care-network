@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import SignOutButton from '@/components/SignOutButton'
 import SiteHeader from '@/components/SiteHeader'
+import HomeCategoryExplorer from '@/components/HomeCategoryExplorer'
 import { BRAND, SERIF, LOGO } from '@/lib/brand'
 
 export const dynamic = 'force-dynamic'
@@ -34,50 +35,73 @@ export default async function HomePage() {
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: BRAND.pageBg }}>
       <SiteHeader right={headerRight} />
 
-      {/* Hero — full lockup + tagline + CTAs */}
-      <section style={{ maxWidth: 760, margin: '0 auto', padding: '44px 32px 8px', textAlign: 'center' }}>
+      {/* Hero — logo lockup + updated tagline naming both audiences */}
+      <section style={{ maxWidth: 720, margin: '0 auto', padding: '44px 32px 4px', textAlign: 'center' }}>
         <img src={LOGO.full} alt="Tidal Care Network" style={{ height: 200, width: 'auto', margin: '0 auto 8px', display: 'block' }} />
         <div style={{ fontSize: 11, fontWeight: 500, color: '#8a9092', textTransform: 'uppercase', letterSpacing: '0.16em', marginBottom: 16 }}>Lowcountry &amp; South Carolina</div>
-        <h1 style={{ fontFamily: SERIF, fontSize: 34, fontWeight: 600, lineHeight: 1.2, color: BRAND.dark, margin: '0 auto 16px', maxWidth: 560, letterSpacing: '-0.01em' }}>
-          A trusted referral network for whole-person care
-        </h1>
-        <p style={{ fontSize: 17, lineHeight: 1.65, color: '#5f6b6d', marginBottom: 28, maxWidth: 540, marginLeft: 'auto', marginRight: 'auto' }}>
-          Connecting vetted, values-aligned providers across therapy, psychiatry, primary care, integrative medicine, and beyond — so the right care is never far away.
+        <p style={{ fontSize: 17, lineHeight: 1.65, color: '#5f6b6d', margin: '0 auto', maxWidth: 580 }}>
+          A free, vetted network spanning the whole spectrum of care across South Carolina — whether you&apos;re looking for care, or looking to connect a client or patient to it.
         </p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link href="/directory" style={{ fontSize: 15, fontWeight: 500, color: 'white', background: BRAND.teal, padding: '12px 26px', borderRadius: 10, textDecoration: 'none' }}>Browse the directory</Link>
-          <Link href="/login" style={{ fontSize: 15, fontWeight: 500, color: BRAND.teal, background: 'white', border: '1px solid #d4d2ca', padding: '12px 26px', borderRadius: 10, textDecoration: 'none' }}>Join as a provider</Link>
-        </div>
       </section>
 
-      {/* Looking for care? — consumer entry point */}
-      <section style={{ maxWidth: 900, margin: '0 auto', padding: '40px 32px 8px' }}>
-        <div style={{ background: BRAND.cardBg, borderRadius: 16, border: '0.5px solid ' + BRAND.hairline, padding: '36px 44px' }}>
-          <div style={{ display: 'flex', gap: 36, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ flex: '1 1 340px' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: BRAND.champagneDark, textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: 10 }}>Looking for care?</div>
-              <h2 style={{ fontFamily: SERIF, fontSize: 25, fontWeight: 600, marginBottom: 12, color: BRAND.dark, letterSpacing: '-0.01em' }}>Find the right provider for you or someone you love</h2>
-              <p style={{ fontSize: 16, lineHeight: 1.75, color: '#444', margin: '0 0 20px' }}>
-                Anyone can search the network — it&apos;s completely free, and you don&apos;t need an account. Browse vetted providers by specialty, insurance, location, telehealth, and the communities they serve, then reach out to them directly.
-              </p>
-              <Link href="/directory" style={{ display: 'inline-block', fontSize: 15, fontWeight: 500, color: 'white', background: BRAND.teal, padding: '12px 26px', borderRadius: 10, textDecoration: 'none' }}>Find a provider</Link>
+      {/* Two paths — looking for care | for providers */}
+      <section style={{ maxWidth: 900, margin: '0 auto', padding: '28px 32px 8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+
+          {/* Looking for care */}
+          <div style={{ background: BRAND.cardBg, borderRadius: 16, border: '0.5px solid ' + BRAND.hairline, padding: '28px 30px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
+              <span style={{ width: 30, height: 30, borderRadius: '50%', background: BRAND.mint, flex: 'none' }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: BRAND.teal, textTransform: 'uppercase', letterSpacing: '0.14em' }}>Looking for care</span>
             </div>
-            <div style={{ flex: '0 1 240px' }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#7d8a87', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Search by what matters</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {['Therapy', 'Psychiatry', 'Primary care', 'Nutrition', 'Recovery', 'Telehealth', 'Insurance', 'Near you'].map((t) => (
-                  <span key={t} style={{ fontSize: 13, fontWeight: 500, padding: '6px 12px', borderRadius: 99, background: BRAND.mint, color: BRAND.dark }}>{t}</span>
-                ))}
-              </div>
+            <h2 style={{ fontFamily: SERIF, fontSize: 25, fontWeight: 600, margin: '0 0 10px', color: BRAND.dark, letterSpacing: '-0.01em', lineHeight: 1.15 }}>Find the right provider for you or someone you love</h2>
+            <p style={{ fontSize: 15, lineHeight: 1.7, color: '#444', margin: '0 0 18px' }}>
+              Search the network free, no account needed. Browse vetted providers by specialty, insurance, location, telehealth, and the communities they serve.
+            </p>
+
+            <HomeCategoryExplorer />
+
+            <div style={{ marginTop: 22 }}>
+              <Link href="/directory" style={{ display: 'inline-block', fontSize: 15, fontWeight: 500, color: 'white', background: BRAND.teal, padding: '12px 26px', borderRadius: 10, textDecoration: 'none' }}>Find a provider →</Link>
             </div>
           </div>
 
-          {/* Crisis safety line */}
-          <div style={{ background: '#fbeef0', border: '1px solid #f3c9d0', borderRadius: 10, padding: '12px 16px', marginTop: 24 }}>
-            <p style={{ fontSize: 13, color: '#7a2230', lineHeight: 1.6, margin: 0 }}>
-              <strong>In a crisis, this directory isn&apos;t the right tool.</strong> If you or someone else is in danger, call <strong>911</strong>. For mental health or suicidal crisis, call or text <strong>988</strong> (Suicide &amp; Crisis Lifeline), available 24/7, or go to your nearest emergency room.
+          {/* For providers */}
+          <div style={{ background: BRAND.cardBg, borderRadius: 16, border: '0.5px solid ' + BRAND.hairline, padding: '28px 30px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
+              <span style={{ width: 30, height: 30, borderRadius: '50%', background: BRAND.champagne, flex: 'none' }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: BRAND.champagneDark, textTransform: 'uppercase', letterSpacing: '0.14em' }}>For providers</span>
+            </div>
+            <h2 style={{ fontFamily: SERIF, fontSize: 25, fontWeight: 600, margin: '0 0 10px', color: BRAND.dark, letterSpacing: '-0.01em', lineHeight: 1.15 }}>Join, and refer with confidence</h2>
+            <p style={{ fontSize: 15, lineHeight: 1.7, color: '#444', margin: '0 0 18px' }}>
+              List alongside vetted, like-minded clinicians and holistic providers — get found by the right clients, and connect the people you treat to colleagues you trust. Placement always stays merit-based.
             </p>
+
+            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 22px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                'Free, vetted profile in the directory',
+                'Refer patients & get peer endorsements',
+                'Share news, events & resources',
+              ].map((item) => (
+                <li key={item} style={{ fontSize: 14, color: '#444', display: 'flex', gap: 9, alignItems: 'flex-start' }}>
+                  <span style={{ color: BRAND.teal, fontWeight: 700, lineHeight: 1.5 }}>✓</span>
+                  <span style={{ lineHeight: 1.5 }}>{item}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div style={{ marginTop: 'auto' }}>
+              <Link href="/login" style={{ display: 'inline-block', fontSize: 15, fontWeight: 500, color: BRAND.teal, background: 'white', border: '1px solid ' + BRAND.teal, padding: '12px 26px', borderRadius: 10, textDecoration: 'none' }}>Join as a provider →</Link>
+            </div>
           </div>
+
+        </div>
+
+        {/* Crisis safety line — full width under both paths */}
+        <div style={{ background: '#fbeef0', border: '1px solid #f3c9d0', borderRadius: 10, padding: '12px 16px', marginTop: 16 }}>
+          <p style={{ fontSize: 13, color: '#7a2230', lineHeight: 1.6, margin: 0 }}>
+            <strong>In a crisis, this directory isn&apos;t the right tool.</strong> If you or someone else is in danger, call <strong>911</strong>. For mental health or suicidal crisis, call or text <strong>988</strong> (Suicide &amp; Crisis Lifeline), available 24/7, or go to your nearest emergency room.
+          </p>
         </div>
       </section>
 

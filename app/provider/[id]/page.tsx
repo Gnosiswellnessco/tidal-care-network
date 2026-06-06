@@ -8,6 +8,7 @@ import PeerRecommendButton from '@/components/PeerRecommendButton'
 import RecordProfileView from '@/components/RecordProfileView'
 import SiteHeader from '@/components/SiteHeader'
 import SaveButton from '@/components/SaveButton'
+import CredentialPill from '@/components/CredentialPill'
 import { BRAND, SERIF } from '@/lib/brand'
 
 export const dynamic = 'force-dynamic'
@@ -171,6 +172,11 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
                 {p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}
               </h1>
               {metaLine && <div style={{ fontSize: 14, color: '#888' }}>{metaLine}</div>}
+              {!p.is_org && (p.credential_classes?.length ?? 0) > 0 && (
+                <div style={{ marginTop: 10 }}>
+                  <CredentialPill classes={p.credential_classes} expandable />
+                </div>
+              )}
               {p.availability_status === 'accepting' && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', marginTop: 8, fontSize: 12, fontWeight: 500, padding: '4px 11px', borderRadius: 99, background: 'white', border: '0.5px solid ' + hairline, color: '#5f6b6d' }}>
                   <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#5a9b6b', marginRight: 6 }} />Accepting new clients

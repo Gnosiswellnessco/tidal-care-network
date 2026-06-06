@@ -10,6 +10,7 @@ import QRCodeImage from '@/components/QRCode'
 import SiteHeader from '@/components/SiteHeader'
 import { BRAND, SERIF } from '@/lib/brand'
 import { REGIONS, METROS_BY_REGION, regionForZip, type Region } from '@/lib/sc-regions'
+import CredentialPill from '@/components/CredentialPill'
 import { showsSupporterBadge, hasBooking, bookingAction, PREMIUM_ACCENT } from '@/lib/subscription'
 
 
@@ -26,6 +27,7 @@ function categoryLabel(key: string) {
 
 type Provider = {
   id: string; full_name: string; credentials: string | null; practice_name: string | null
+  credential_classes?: string[] | null
   primary_area: string | null; primary_zip: string | null; bio: string | null; photo_url: string | null; is_org: boolean
   offers_telehealth: boolean; availability_status: string; phone?: string | null; email?: string | null; website?: string | null
   provider_categories: { category: string; is_primary: boolean }[]
@@ -552,6 +554,9 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                     <div>
                       <div style={{ fontFamily: SERIF, fontSize: 19, fontWeight: 600, color: dark, marginBottom: 2, letterSpacing: '-0.01em', lineHeight: 1.15 }}>{p.is_org ? (p.practice_name || p.full_name) : `${p.full_name}${p.credentials ? `, ${p.credentials}` : ''}`}</div>
                       <div style={{ fontSize: 13, color: '#888' }}>{p.practice_name && !p.is_org ? `${p.practice_name} · ` : ''}{p.primary_area}</div>
+                      {!p.is_org && (p.credential_classes?.length ?? 0) > 0 && (
+                        <div style={{ marginTop: 5 }}><CredentialPill classes={p.credential_classes} /></div>
+                      )}
                     </div>
                   </div>
                   {p.bio && <p style={{ fontSize: 14, lineHeight: 1.6, color: '#555', marginBottom: 12, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{p.bio}</p>}
