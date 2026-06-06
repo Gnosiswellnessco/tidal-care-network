@@ -44,6 +44,8 @@ type Provider = {
   map_label?: string | null
   map_visibility?: string
   is_premium?: boolean | null
+  comped_premium?: boolean | null
+  veteran_serving?: boolean | null
   subscription_status?: string | null
   show_supporter_badge?: boolean | null
   booking_type?: string | null
@@ -587,6 +589,12 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                   <img src="/vetted.svg" alt="Vetted" style={{ height: 20, width: 'auto', display: 'block' }} />
                   {p.is_endorsed && <img src="/endorsed.svg" alt="Verified by a colleague" style={{ height: 20, width: 'auto', display: 'block' }} />}
                   {supporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 16, width: 'auto', display: 'block' }} />}
+                  {p.veteran_serving && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9.5, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'white', background: '#2c4d52', padding: '3px 8px', borderRadius: 99 }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="white" aria-hidden="true"><path d="M7.5 2h9l-2 6.6a6 6 0 0 0-5 0z"/><circle cx="12" cy="15" r="6.4"/><circle cx="12" cy="15" r="3.9" fill="#2c4d52"/><path d="M12 11.9l.85 1.72 1.9.28-1.37 1.34.32 1.9L12 16.46l-1.7.88.32-1.9-1.37-1.34 1.9-.28z" fill="white"/></svg>
+                      Veteran-serving
+                    </span>
+                  )}
                 </div>
 
                 <Link href={`/provider/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -610,7 +618,7 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
 
                   {(matchedSpecs.length > 0 || matchedIns.length > 0 || matchedPops.length > 0) && (
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                      {matchedSpecs.map((s) => <span key={'ms' + s} style={matchChip}>✓ {s}</span>)}
+                      {matchedSpecs.map((s) => <span key={'ms' + s} style={matchChip}>✓ {s}{s === 'Trauma-informed' ? ' (provider-reported)' : ''}</span>)}
                       {matchedPops.map((x) => <span key={'mp' + x} style={matchChip}>✓ {x}</span>)}
                       {matchedIns.map((i) => <span key={'mi' + i} style={matchChip}>✓ {i}</span>)}
                     </div>
@@ -624,25 +632,25 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                     {(p.provider_insurance || []).length > 2 && <span style={{ ...pill, color: '#9aa0a1' }}>+{(p.provider_insurance || []).length - 2} more</span>}
                   </div>
 
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '0.5px solid ' + hairline, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <RatingDisplay avg={p.rating_avg ?? null} count={p.rating_count ?? 0} size={14} />
-                    {recCount > 0 && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#9a6840', background: '#f3ebdf', padding: '3px 9px', borderRadius: 999 }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
-                        {recCount}
-                      </span>
-                    )}
-                  </div>
                 </Link>
 
-                {canRecommend && myProviderId !== p.id && (
-                  <button onClick={() => toggleRecommend(p.id)} disabled={recBusy === p.id}
-                    title={isRec ? 'Remove your recommendation' : 'Recommend this provider to colleagues'}
-                    style={{ marginTop: 12, marginRight: 8, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: isRec ? 'white' : teal, background: isRec ? teal : 'white', border: '1px solid ' + teal, padding: '7px 14px', borderRadius: 999, cursor: recBusy === p.id ? 'default' : 'pointer', opacity: recBusy === p.id ? 0.6 : 1 }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={isRec ? 'white' : teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v11"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
-                    {isRec ? 'Recommended' : 'Recommend'}
-                  </button>
-                )}
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '0.5px solid ' + hairline, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <RatingDisplay avg={p.rating_avg ?? null} count={p.rating_count ?? 0} size={14} />
+                  {recCount > 0 && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: '#9a6840', background: '#f3ebdf', padding: '3px 9px', borderRadius: 999 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
+                      {recCount}
+                    </span>
+                  )}
+                  {canRecommend && myProviderId !== p.id && (
+                    <button onClick={() => toggleRecommend(p.id)} disabled={recBusy === p.id}
+                      title={isRec ? 'Remove your recommendation' : 'Recommend this provider to colleagues'}
+                      style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, color: isRec ? '#9a6840' : teal, background: 'none', border: 'none', padding: 0, cursor: recBusy === p.id ? 'default' : 'pointer', opacity: recBusy === p.id ? 0.6 : 1 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill={isRec ? '#9a6840' : 'none'} stroke={isRec ? '#9a6840' : teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 10v11"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>
+                      {isRec ? 'Recommended' : 'Recommend'}
+                    </button>
+                  )}
+                </div>
 
                 {booking && (
                   <a href={booking.href} target={p.booking_type === 'link' ? '_blank' : undefined} rel={p.booking_type === 'link' ? 'noopener noreferrer' : undefined}

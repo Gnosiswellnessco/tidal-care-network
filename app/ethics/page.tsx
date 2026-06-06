@@ -69,6 +69,15 @@ export default function EthicsPage() {
         <LI>Seek supervision or consultation when confronted with practice situations outside my competence.</LI>
       </UL>
 
+      <H3>Condition 8 — Accurate representation of my services</H3>
+      <P>The specialties, approaches, and designations I select on my Network profile — such as &quot;trauma-informed&quot; or other modality- or identity-specific labels — reflect actual training and current practice. I commit to:</P>
+      <UL>
+        <LI>Selecting only specialties and approaches I am genuinely trained and qualified to provide;</LI>
+        <LI>Affirming, when prompted, that I have completed the relevant training before claiming a specialized designation;</LI>
+        <LI>Removing any designation that no longer reflects my training or practice;</LI>
+        <LI>Understanding that these selections are displayed to the public as provider-reported.</LI>
+      </UL>
+
       <H2>Scope and enforcement</H2>
       <P>This attestation covers my conduct in all professional activities, including direct client care, referral practices, professional communications, and conduct within the Tidal Care Network platform.</P>
       <P>A violation of any condition in this agreement may result in suspension or removal from the Network, as described in the Provider Terms of Participation. The Administrator retains sole discretion in determining whether a violation has occurred and what action is appropriate.</P>

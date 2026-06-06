@@ -52,6 +52,7 @@ export default function EditProfilePage() {
 
   const [selectedCats, setSelectedCats] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [traumaPrompt, setTraumaPrompt] = useState<string | null>(null)
   const [selectedInsurance, setSelectedInsurance] = useState<string[]>([])
   const [selectedAges, setSelectedAges] = useState<string[]>([])
   const [selectedPopulations, setSelectedPopulations] = useState<string[]>([])
@@ -260,6 +261,7 @@ export default function EditProfilePage() {
         full_name: fullName,
         credentials,
         credential_classes: credentialClasses,
+        trauma_informed_attested_at: selectedTags.some((t) => t.endsWith(':Trauma-informed')) ? new Date().toISOString() : null,
         practice_name: practiceName || null,
         practice_type: practiceType || null,
         npi_number: npiNumber || null,
@@ -396,6 +398,20 @@ export default function EditProfilePage() {
 
   return (
     <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: '#f7f6f2', minHeight: '100vh' }}>
+      {traumaPrompt && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(44,77,82,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 1000 }}>
+          <div style={{ background: 'white', borderRadius: 14, maxWidth: 440, padding: 28, boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ fontSize: 19, fontWeight: 700, color: dark, marginBottom: 10 }}>Confirm trauma-informed training</div>
+            <p style={{ fontSize: 14.5, lineHeight: 1.6, color: '#54625f', margin: '0 0 20px' }}>
+              I have completed training in trauma-informed care and practice accordingly. I understand this will be shown to the public as a provider-reported designation.
+            </p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setTraumaPrompt(null)} style={{ fontSize: 14, fontWeight: 500, color: '#666', background: 'white', border: '1px solid #d4d2ca', padding: '9px 18px', borderRadius: 8, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={() => { toggle(traumaPrompt, selectedTags, setSelectedTags); setTraumaPrompt(null) }} style={{ fontSize: 14, fontWeight: 500, color: 'white', background: teal, border: 'none', padding: '9px 18px', borderRadius: 8, cursor: 'pointer' }}>I confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 900, margin: '0 auto' }}>
         <Link href="/"><img src="/tidal-care-network.svg" alt="Tidal Care Network" style={{ height: 180, width: 'auto' }} /></Link>
         <Link href="/dashboard" style={{ fontSize: 14, color: teal, textDecoration: 'none' }}>Cancel</Link>
@@ -546,7 +562,11 @@ export default function EditProfilePage() {
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {section.options.map((opt) => {
                               const on = selectedTags.includes(catKey + ':' + opt)
-                              return (<button key={opt} type="button" onClick={() => toggle(catKey + ':' + opt, selectedTags, setSelectedTags)} style={pill(on)}>{opt}</button>)
+                              return (<button key={opt} type="button" onClick={() => {
+                                const key = catKey + ':' + opt
+                                if (opt === 'Trauma-informed' && !on) { setTraumaPrompt(key); return }
+                                toggle(key, selectedTags, setSelectedTags)
+                              }} style={pill(on)}>{opt}</button>)
                             })}
                             {pendingForSection.map((r, idx) => (
                               <span key={'req' + idx} style={{ fontSize: 12, padding: '4px 11px', borderRadius: 99, background: '#faeeda', color: '#633806', border: '1px solid #e8c98a', display: 'inline-flex', alignItems: 'center', gap: 6 }}>

@@ -157,6 +157,12 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
             <img src="/vetted.svg" alt="Vetted" style={{ height: 26, width: 'auto', display: 'block' }} />
             {isEndorsed && <img src="/endorsed.svg" alt="Verified by a colleague" style={{ height: 26, width: 'auto', display: 'block' }} />}
             {showSupporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 26, width: 'auto', display: 'block' }} />}
+            {p.veteran_serving && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'white', background: '#2c4d52', padding: '4px 11px', borderRadius: 99 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="white" aria-hidden="true"><path d="M7.5 2h9l-2 6.6a6 6 0 0 0-5 0z"/><circle cx="12" cy="15" r="6.4"/><circle cx="12" cy="15" r="3.9" fill="#2c4d52"/><path d="M12 11.9l.85 1.72 1.9.28-1.37 1.34.32 1.9L12 16.46l-1.7.88.32-1.9-1.37-1.34 1.9-.28z" fill="white"/></svg>
+                Veteran-serving
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 24 }}>
@@ -237,7 +243,13 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
                   return (
                     <div key={key}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: dark, marginBottom: 4 }}>{categoryLabel(key)}</div>
-                      {items.length > 0 && <p style={{ fontSize: 14.5, lineHeight: 1.75, color: '#54625f', margin: 0 }}>{items.join(', ')}</p>}
+                      {items.length > 0 && (
+                        <p style={{ fontSize: 14.5, lineHeight: 1.75, color: '#54625f', margin: 0 }}>
+                          {items.map((it, idx) => (
+                            <span key={it}>{idx > 0 ? ', ' : ''}{it}{it === 'Trauma-informed' && <span style={{ fontStyle: 'italic', color: '#9aa0a1' }}> (provider-reported)</span>}</span>
+                          ))}
+                        </p>
+                      )}
                     </div>
                   )
                 })}
