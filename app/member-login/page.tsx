@@ -10,6 +10,7 @@ export default function MemberLoginPage() {
       heading="Welcome to Tidal Care Network"
       subtitle="Sign in to save providers, build your shortlist, and keep track of the care that fits you."
       defaultNext="/saved"
+      requireConsent
       footer={
         <>
           Are you a provider?{' '}

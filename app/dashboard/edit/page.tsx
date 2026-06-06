@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES, INSURANCE_OPTIONS, AGE_GROUPS, POPULATIONS } from '@/lib/taxonomy'
 import { useMergedTags } from '@/hooks/useTaxonomy'
 import { CategoryIcon } from '@/components/CategoryIcon'
+import { CREDENTIAL_CLASS_ORDER, CREDENTIAL_CLASSES } from '@/lib/care-families'
 
 const teal = '#3e6a70'
 const dark = '#2c4d52'
@@ -29,6 +30,7 @@ export default function EditProfilePage() {
 
   const [fullName, setFullName] = useState('')
   const [credentials, setCredentials] = useState('')
+  const [credentialClasses, setCredentialClasses] = useState<string[]>([])
   const [practiceName, setPracticeName] = useState('')
   const [practiceType, setPracticeType] = useState('')
   const [licenseNumber, setLicenseNumber] = useState('')
@@ -87,6 +89,7 @@ export default function EditProfilePage() {
     setProviderId(p.id)
     setFullName(p.full_name || '')
     setCredentials(p.credentials || '')
+    setCredentialClasses(Array.isArray(p.credential_classes) ? p.credential_classes : [])
     setPracticeName(p.practice_name || '')
     setPracticeType(p.practice_type || '')
     setLicenseNumber(p.license_number || '')
@@ -256,6 +259,7 @@ export default function EditProfilePage() {
       .update({
         full_name: fullName,
         credentials,
+        credential_classes: credentialClasses,
         practice_name: practiceName || null,
         practice_type: practiceType || null,
         npi_number: npiNumber || null,
@@ -421,6 +425,31 @@ export default function EditProfilePage() {
             </Field>
             <Field label={isOrgMode ? 'Admin contact name' : 'Full name'} required><input style={inp} value={fullName} onChange={(e) => setFullName(e.target.value)} /></Field>
             <Field label={isOrgMode ? 'Your title / role (optional)' : 'Credentials / title'} required={!isOrgMode}><input style={inp} value={credentials} onChange={(e) => setCredentials(e.target.value)} placeholder="e.g. LCSW, MD, RD" /></Field>
+            {!isOrgMode && (
+              <Field label="How clients see your credentials">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {CREDENTIAL_CLASS_ORDER.map((c) => {
+                    const active = credentialClasses.includes(c)
+                    return (
+                      <button
+                        type="button"
+                        key={c}
+                        onClick={() => setCredentialClasses((prev) => prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c])}
+                        aria-pressed={active}
+                        style={{ textAlign: 'left', display: 'flex', gap: 11, alignItems: 'flex-start', padding: '11px 13px', borderRadius: 9, border: '1px solid ' + (active ? teal : '#e5e3dc'), background: active ? mint : 'white', cursor: 'pointer' }}
+                      >
+                        <span style={{ width: 17, height: 17, flex: 'none', marginTop: 1, borderRadius: 5, border: '1.5px solid ' + (active ? teal : '#c4c2ba'), background: active ? teal : 'white', color: 'white', fontSize: 11, lineHeight: '14px', textAlign: 'center' }}>{active ? '✓' : ''}</span>
+                        <span>
+                          <span style={{ fontSize: 13.5, fontWeight: 600, color: dark }}>{CREDENTIAL_CLASSES[c].label}</span>
+                          <span style={{ display: 'block', fontSize: 12, color: '#6b7577', lineHeight: 1.5, marginTop: 2 }}>{CREDENTIAL_CLASSES[c].meaning}</span>
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <p style={{ fontSize: 11, color: '#999', marginTop: 6, lineHeight: 1.5 }}>Select all that apply — this shows as a neutral label on your profile so people understand your role.</p>
+              </Field>
+            )}
             <Field label={isOrgMode ? 'Organization name' : 'Practice or organization name (optional)'} required={isOrgMode}><input style={inp} value={practiceName} onChange={(e) => setPracticeName(e.target.value)} /></Field>
             {isOrgMode && (
               <Field label="Brief organization description"><textarea style={{ ...inp, minHeight: 70, resize: 'vertical' }} value={bio} onChange={(e) => setBio(e.target.value)} /></Field>
