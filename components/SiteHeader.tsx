@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { BRAND, SERIF, LOGO } from '@/lib/brand'
+import LoginMenu from '@/components/LoginMenu'
 
 // Shared site header: identical mark + serif wordmark on the left across every page.
-// The right side varies per page — pass it in via `right` (e.g. nav links, sign-out).
+// The right side carries page-specific links (passed via `right`) plus the
+// global auth control (member/provider sign in, or saved/dashboard + sign out).
 export default function SiteHeader({ right }: { right?: React.ReactNode }) {
   return (
     <header
@@ -24,7 +26,10 @@ export default function SiteHeader({ right }: { right?: React.ReactNode }) {
           Tidal Care Network
         </span>
       </Link>
-      {right && <nav style={{ display: 'flex', alignItems: 'center', gap: 22, flexWrap: 'wrap' }}>{right}</nav>}
+      <nav style={{ display: 'flex', alignItems: 'center', gap: 22, flexWrap: 'wrap' }}>
+        {right}
+        <LoginMenu />
+      </nav>
     </header>
   )
 }

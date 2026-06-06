@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES, TAGS, POPULATIONS, INSURANCE_OPTIONS } from '@/lib/taxonomy'
 import { RatingDisplay } from '@/components/RatingWidget'
 import DirectoryMap from '@/components/DirectoryMap'
-import SignOutButton from '@/components/SignOutButton'
 import QRCodeImage from '@/components/QRCode'
 import SiteHeader from '@/components/SiteHeader'
 import { BRAND, SERIF } from '@/lib/brand'
@@ -316,20 +315,8 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
 
   const headerRight = (
     <>
-      <Link href="/directory" style={{ fontSize: 14, color: teal, fontWeight: 500, textDecoration: 'none' }}>Find a provider</Link>
       <Link href="/news" style={{ fontSize: 14, color: '#4a5557', textDecoration: 'none' }}>News</Link>
-      {myProviderId ? (
-        <>
-          <Link href="/dashboard" style={{ fontSize: 14, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>My dashboard</Link>
-          <SignOutButton />
-        </>
-      ) : (
-        <>
-          <Link href="/saved" style={{ fontSize: 14, color: '#4a5557', textDecoration: 'none' }}>Saved</Link>
-          <Link href="/member-login" style={{ fontSize: 14, color: dark, textDecoration: 'none' }}>Sign in</Link>
-          <Link href="/login?next=/join" style={{ fontSize: 14, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>Join the network</Link>
-        </>
-      )}
+      <Link href="/login?next=/join" style={{ fontSize: 14, fontWeight: 500, color: dark, textDecoration: 'none' }}>Join the network</Link>
     </>
   )
 
