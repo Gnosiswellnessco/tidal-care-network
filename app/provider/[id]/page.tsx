@@ -155,7 +155,7 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
             {p.is_demo && <span style={demoPill}>Demo listing</span>}
             <img src="/vetted.svg" alt="Vetted" style={{ height: 26, width: 'auto', display: 'block' }} />
-            {isEndorsed && <img src="/endorsed.svg" alt="Peer endorsed" style={{ height: 26, width: 'auto', display: 'block' }} />}
+            {isEndorsed && <img src="/endorsed.svg" alt="Verified by a colleague" style={{ height: 26, width: 'auto', display: 'block' }} />}
             {showSupporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 26, width: 'auto', display: 'block' }} />}
           </div>
 
@@ -324,6 +324,17 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
           </Section>
 
         </div>
+
+        <p style={{ textAlign: 'center', fontSize: 12.5, color: '#9aa0a1', marginTop: 18, lineHeight: 1.6 }}>
+          See something out of date or incorrect?{' '}
+          <a
+            href={`mailto:info@tidalcare.org?subject=${encodeURIComponent('Inaccurate listing: ' + p.full_name)}&body=${encodeURIComponent('Please describe what is inaccurate about this provider listing:\n\nProvider: ' + p.full_name + '\n\n')}`}
+            style={{ color: teal, textDecoration: 'underline' }}
+          >
+            Report this profile as inaccurate
+          </a>
+          .
+        </p>
       </div>
     </main>
   )

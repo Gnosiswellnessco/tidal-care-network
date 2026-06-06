@@ -510,16 +510,16 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
               <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Vetted</strong> — credentials reviewed by the Network</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <img src="/endorsed.svg" alt="Endorsed" style={{ height: 18, width: 'auto' }} />
-              <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Endorsed</strong> — vouched for by a peer provider</span>
+              <img src="/endorsed.svg" alt="Verified by a colleague" style={{ height: 18, width: 'auto' }} />
+              <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Verified by a colleague</strong> — a peer formally attested to them during vetting</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <img src="/Supporter.svg" alt="Network supporter" style={{ height: 18, width: 'auto' }} />
+              <img src="/Supporter.svg" alt="Network supporter" style={{ height: 15, width: 'auto' }} />
               <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Supporter</strong> — helps fund the network; not a quality or ranking signal</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <img src="/thumbs-up.svg" alt="Recommended" style={{ height: 16, width: 'auto' }} />
-              <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Recommended</strong> — a peer provider vouches for them as someone they&apos;d refer to</span>
+              <span style={{ fontSize: 12, color: '#666' }}><strong style={{ color: dark }}>Recommended</strong> — peers in the network recommend them based on direct experience</span>
             </div>
           </div>
         </div>
@@ -580,8 +580,8 @@ export default function DirectoryClient({ providers }: { providers: Provider[] }
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
                   {p.is_demo && <span style={demoPill}>Demo</span>}
                   <img src="/vetted.svg" alt="Vetted" style={{ height: 20, width: 'auto', display: 'block' }} />
-                  {p.is_endorsed && <img src="/endorsed.svg" alt="Peer endorsed" style={{ height: 20, width: 'auto', display: 'block' }} />}
-                  {supporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 20, width: 'auto', display: 'block' }} />}
+                  {p.is_endorsed && <img src="/endorsed.svg" alt="Verified by a colleague" style={{ height: 20, width: 'auto', display: 'block' }} />}
+                  {supporter && <img src="/Supporter.svg" alt="Network supporter" style={{ height: 16, width: 'auto', display: 'block' }} />}
                 </div>
 
                 <Link href={`/provider/${p.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
