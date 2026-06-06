@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { BRAND, SERIF, LOGO } from '@/lib/brand'
+import { TERMS_VERSION, MEMBER_DISCLAIMER } from '@/lib/consent'
 
 // Shared magic-link sign-in form used by both the provider login (/login)
 // and the member login (/member-login). The only differences between the two
@@ -13,19 +14,26 @@ export default function LoginForm({
   subtitle,
   defaultNext,
   footer,
+  requireConsent = false,
 }: {
   heading: string
   subtitle: string
   defaultNext: string
   footer?: React.ReactNode
+  requireConsent?: boolean
 }) {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [agreed, setAgreed] = useState(false)
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
+    if (requireConsent && !agreed) {
+      setError('Please agree to the Terms, Privacy Policy, and disclaimer to continue.')
+      return
+    }
     setLoading(true)
     setError('')
 
@@ -33,10 +41,11 @@ export default function LoginForm({
     // An explicit ?next= (e.g. from a Save click) always wins; otherwise use
     // this page's default destination.
     const next = new URLSearchParams(window.location.search).get('next') || defaultNext
+    const redirect = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}${requireConsent ? `&consent=${encodeURIComponent(TERMS_VERSION)}` : ''}`
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        emailRedirectTo: redirect,
       },
     })
 
@@ -74,10 +83,18 @@ export default function LoginForm({
               style={{ width: '100%', padding: '11px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, marginBottom: 16, color: '#1a1a1a', background: 'white' }}
             />
             {error && <p style={{ fontSize: 13, color: '#b91c1c', marginBottom: 12 }}>{error}</p>}
+            {requireConsent && (
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 12.5, color: '#5f6b6d', lineHeight: 1.5, marginBottom: 14 }}>
+                <input type="checkbox" checked={agreed} onChange={(e) => { setAgreed(e.target.checked); if (error) setError('') }} style={{ marginTop: 2, flexShrink: 0 }} />
+                <span>
+                  I agree to the <Link href="/terms" style={{ color: BRAND.teal }}>Terms</Link> and <Link href="/privacy" style={{ color: BRAND.teal }}>Privacy Policy</Link>. {MEMBER_DISCLAIMER}
+                </span>
+              </label>
+            )}
             <button
               type="submit"
-              disabled={loading}
-              style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 500, color: 'white', background: BRAND.teal, border: 'none', borderRadius: 8, cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1 }}
+              disabled={loading || (requireConsent && !agreed)}
+              style={{ width: '100%', padding: '11px', fontSize: 14, fontWeight: 500, color: 'white', background: BRAND.teal, border: 'none', borderRadius: 8, cursor: loading || (requireConsent && !agreed) ? 'default' : 'pointer', opacity: loading || (requireConsent && !agreed) ? 0.6 : 1 }}
             >
               {loading ? 'Sending…' : 'Send me a sign-in link'}
             </button>

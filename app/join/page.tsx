@@ -19,6 +19,7 @@ const ATTESTATIONS = [
   'I carry professional liability insurance, where applicable to my profession.',
   'I agree to abide by the ethical standards and scope of practice of my profession.',
   'I will provide care only within my areas of competence and training.',
+  'If any licensing board or professional body takes disciplinary action against me, I will voluntarily remove my listing from the Network within 10 business days.',
   'The information I have provided in this application is true and accurate.',
 ]
 
@@ -301,6 +302,7 @@ export default function JoinPage() {
         vetting_status: 'pending',
         vetting_track: vettingTrack,
         is_active: true,
+        agreed_board_action_removal: true,
         is_org: isOrgMode,
         org_id: !isOrgMode && selectedOrg ? selectedOrg.id : null,
         org_status: !isOrgMode && selectedOrg ? 'pending' : 'none',

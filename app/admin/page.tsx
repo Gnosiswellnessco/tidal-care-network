@@ -33,6 +33,18 @@ async function declineProvider(formData: FormData) {
   revalidatePath('/admin')
 }
 
+async function setBoardReportStatus(formData: FormData) {
+  'use server'
+  const id = formData.get('id') as string
+  const status = formData.get('status') as string
+  const admin = createAdminClient()
+  await admin
+    .from('board_action_reports')
+    .update({ status, reviewed_at: new Date().toISOString() })
+    .eq('id', id)
+  revalidatePath('/admin')
+}
+
 async function bulkRemoveProviders(formData: FormData) {
   'use server'
   const ids = ((formData.get('ids') as string) || '').split(',').map((x) => x.trim()).filter(Boolean)
@@ -200,6 +212,13 @@ export default async function AdminPage() {
   const approved = providers?.filter((p) => p.vetting_status === 'approved') || []
   const total = providers?.length || 0
 
+  // Board-action reports (public intake). New ones surface for review.
+  const { data: boardReports } = await admin
+    .from('board_action_reports')
+    .select('*')
+    .order('created_at', { ascending: false })
+  const openReports = (boardReports || []).filter((r) => r.status === 'new' || r.status === 'reviewing')
+
   // --- Vetting data for pending applicants: credential files (signed) + endorsement status ---
   const pendingIds = pending.map((p) => p.id)
   const credsByProvider = new Map<string, CredFile[]>()
@@ -301,6 +320,7 @@ export default async function AdminPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 28 }}>
           <Stat label="Pending review" value={pending.length} />
           <Stat label="Approved" value={approved.length} />
+          <Stat label="Board reports" value={openReports.length} />
           <Stat label="Tag requests" value={tagReqs?.length || 0} />
           <Stat label="Live posts" value={livePosts.length} />
         </div>
@@ -408,6 +428,52 @@ export default async function AdminPage() {
                 </div>
               )
             })}
+          </div>
+        )}
+
+        <h2 style={{ fontSize: 18, fontWeight: 600, color: '#2c4d52', marginBottom: 12 }}>Board-action reports</h2>
+        <p style={{ fontSize: 13, color: '#888', marginTop: -6, marginBottom: 12, lineHeight: 1.5 }}>
+          Public reports of licensing-board actions. Each is an allegation to verify against the official board record — confirm before removing a provider. Use the provider list below to remove anyone you confirm.
+        </p>
+        {(!boardReports || boardReports.length === 0) ? (
+          <p style={{ fontSize: 14, color: '#888', marginBottom: 32 }}>No board-action reports.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 32 }}>
+            {boardReports.map((r) => (
+              <div key={r.id} style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 20, opacity: r.status === 'dismissed' ? 0.6 : 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 260 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 16, fontWeight: 600, color: '#2c4d52' }}>{r.provider_name}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '2px 8px', borderRadius: 99, background: r.status === 'new' ? '#fbeef0' : r.status === 'reviewing' ? '#fff3d6' : r.status === 'actioned' ? '#e6eef0' : '#eee', color: r.status === 'new' ? '#b3504f' : r.status === 'reviewing' ? '#92610a' : '#2c4d52' }}>{r.status}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: '#666', marginTop: 4 }}>
+                      {r.licensing_board ? `${r.licensing_board}` : 'Board not specified'}{r.license_number ? ` · License ${r.license_number}` : ''}
+                    </div>
+                    <div style={{ fontSize: 14, color: '#444', marginTop: 8, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{r.details}</div>
+                    {r.source_url && (
+                      <div style={{ marginTop: 6 }}>
+                        <a href={r.source_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#3e6a70' }}>View board record →</a>
+                      </div>
+                    )}
+                    <div style={{ fontSize: 12, color: '#9aa0a1', marginTop: 8 }}>
+                      Reported {new Date(r.created_at).toLocaleDateString()}{r.reporter_name ? ` · by ${r.reporter_name}` : ''}{r.reporter_role ? ` (${r.reporter_role})` : ''}{r.reporter_email ? ` · ${r.reporter_email}` : ''}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 150 }}>
+                    {(['reviewing', 'actioned', 'dismissed'] as const).map((s) => (
+                      <form action={setBoardReportStatus} key={s}>
+                        <input type="hidden" name="id" value={r.id} />
+                        <input type="hidden" name="status" value={s} />
+                        <button type="submit" disabled={r.status === s} style={{ width: '100%', fontSize: 13, fontWeight: 500, padding: '8px 14px', borderRadius: 8, cursor: r.status === s ? 'default' : 'pointer', border: '1px solid ' + (s === 'dismissed' ? '#d4d2ca' : '#3e6a70'), background: r.status === s ? '#f0efe9' : s === 'actioned' ? '#3e6a70' : 'white', color: r.status === s ? '#999' : s === 'actioned' ? 'white' : s === 'dismissed' ? '#666' : '#3e6a70' }}>
+                          {s === 'reviewing' ? 'Mark reviewing' : s === 'actioned' ? 'Mark actioned' : 'Dismiss'}
+                        </button>
+                      </form>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

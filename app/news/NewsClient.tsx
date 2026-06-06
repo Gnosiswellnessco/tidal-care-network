@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { POST_TYPES, POST_POPULATIONS, POST_TOPICS, CATEGORY_GROUPS, categoryLabel, postTypeLabel } from '@/lib/news-taxonomy'
 import ShareSheet from '@/components/ShareSheet'
+import NewsDigestSignup from '@/components/NewsDigestSignup'
 
 const dark = '#2c4d52'
 const teal = '#3e6a70'
@@ -189,6 +190,10 @@ export default function NewsClient({ posts }: { posts: Post[] }) {
             {browse.map((p) => <SmallCard key={p.id} p={p} onShare={share} />)}
           </div>
         )}
+      </div>
+
+      <div style={{ marginTop: 32, paddingTop: 28, borderTop: '0.5px solid #e5e3dc' }}>
+        <NewsDigestSignup />
       </div>
 
       {shareFor && (

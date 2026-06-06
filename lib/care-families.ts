@@ -37,6 +37,12 @@ export const CREDENTIAL_CLASSES: Record<
   },
 }
 
+// Plain-language note shown wherever credentials are explained. Reassures people
+// that the network spans licensed, certified/registered, and peer providers —
+// not "better/worse," just different kinds of support for different needs.
+export const NETWORK_CREDENTIAL_NOTE =
+  'Not every provider here is a licensed medical professional. Some are licensed clinicians; others are certified or registered practitioners, or peer supporters with lived experience. None of these is "better" or "worse" — they are different kinds of care and support, suited to different needs. Choosing a provider is about finding the right fit for what you\u2019re looking for. If you\u2019re unsure what kind of provider is right for you, your doctor is a good person to ask.'
+
 export function isCredentialClass(v: string): v is CredentialClass {
   return v === 'licensed' || v === 'certified' || v === 'peer'
 }

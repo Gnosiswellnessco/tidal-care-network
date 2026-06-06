@@ -3,6 +3,7 @@ import {
   CARE_FAMILIES,
   CREDENTIAL_CLASSES,
   CREDENTIAL_CLASS_ORDER,
+  NETWORK_CREDENTIAL_NOTE,
   categoryLabel,
   type CredentialClass,
 } from '@/lib/care-families'
@@ -76,6 +77,10 @@ export default function CareFamiliesExplainer({
             </div>
           ))}
         </div>
+
+        <p style={{ fontSize: 12.5, color: '#5f6b6d', lineHeight: 1.6, margin: '14px 0 0', paddingTop: 14, borderTop: '0.5px solid ' + BRAND.hairline }}>
+          {NETWORK_CREDENTIAL_NOTE}
+        </p>
       </div>
     </section>
   )

@@ -10,6 +10,20 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
+      // Record member consent (Terms/Privacy/disclaimer version) when present.
+      // Runs before the redirect branching so it's captured even for members,
+      // whose next is '/saved'.
+      const consent = searchParams.get('consent')
+      if (consent) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          await supabase.from('member_profiles').upsert(
+            { user_id: user.id, terms_version: consent, terms_agreed_at: new Date().toISOString() },
+            { onConflict: 'user_id' },
+          )
+        }
+      }
+
       if (next !== '/dashboard') {
         return NextResponse.redirect(`${origin}${next}`)
       }
