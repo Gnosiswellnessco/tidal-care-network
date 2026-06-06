@@ -13,6 +13,9 @@ type ProviderRow = {
   email: string | null
   vetting_status: string | null
   admin_override?: boolean | null
+  veteran_serving?: boolean | null
+  comped_premium?: boolean | null
+  comp_note?: string | null
 }
 
 export default function AdminProviderManager({
@@ -20,14 +23,26 @@ export default function AdminProviderManager({
   removeAction,
   deleteAction,
   reinstateAction,
+  veteranServingAction,
+  compedPremiumAction,
+  compNoteAction,
 }: {
   providers: ProviderRow[]
   removeAction: (formData: FormData) => Promise<void>
   deleteAction: (formData: FormData) => Promise<void>
   reinstateAction: (formData: FormData) => Promise<void>
+  veteranServingAction: (formData: FormData) => Promise<void>
+  compedPremiumAction: (formData: FormData) => Promise<void>
+  compNoteAction: (formData: FormData) => Promise<void>
 }) {
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  function callAction(action: (fd: FormData) => Promise<void>, fields: Record<string, string>) {
+    const fd = new FormData()
+    Object.entries(fields).forEach(([k, v]) => fd.set(k, v))
+    action(fd)
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -129,22 +144,38 @@ export default function AdminProviderManager({
 
       {/* Rows */}
       {filtered.length > 0 ? filtered.map((p, i) => (
-        <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: i < filtered.length - 1 ? '1px solid #f0f0f0' : 'none', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-            <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggle(p.id)} style={{ cursor: 'pointer', flexShrink: 0 }} aria-label={`Select ${p.full_name}`} />
-            <div style={{ minWidth: 0 }}>
-              <span style={{ fontSize: 14, color: '#333' }}>
-                {p.full_name}{p.credentials ? `, ${p.credentials}` : ''}
-                {p.admin_override && <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: '#f7ece2', color: '#b3504f', marginLeft: 8 }}>override</span>}
-              </span>
-              {(p.practice_name || p.email) && (
-                <div style={{ fontSize: 12, color: '#999', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {[p.practice_name, p.email].filter(Boolean).join(' · ')}
-                </div>
-              )}
+        <div key={p.id} style={{ padding: '12px 20px', borderBottom: i < filtered.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+              <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggle(p.id)} style={{ cursor: 'pointer', flexShrink: 0 }} aria-label={`Select ${p.full_name}`} />
+              <div style={{ minWidth: 0 }}>
+                <span style={{ fontSize: 14, color: '#333' }}>
+                  {p.full_name}{p.credentials ? `, ${p.credentials}` : ''}
+                  {p.admin_override && <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: '#f7ece2', color: '#b3504f', marginLeft: 8 }}>override</span>}
+                  {p.veteran_serving && <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: '#e6ebed', color: '#2c4d52', marginLeft: 8 }}>veteran-serving</span>}
+                  {p.comped_premium && <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 99, background: '#efe9dc', color: '#7d7256', marginLeft: 8 }}>comped</span>}
+                </span>
+                {(p.practice_name || p.email) && (
+                  <div style={{ fontSize: 12, color: '#999', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {[p.practice_name, p.email].filter(Boolean).join(' · ')}
+                  </div>
+                )}
+              </div>
             </div>
+            <span style={statusStyle(p.vetting_status)}>{p.vetting_status}</span>
           </div>
-          <span style={statusStyle(p.vetting_status)}>{p.vetting_status}</span>
+
+          {/* Per-provider grants */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 22, flexWrap: 'wrap', marginTop: 10, paddingLeft: 28 }}>
+            <Toggle on={!!p.veteran_serving} label="Veteran-serving" onClick={() => callAction(veteranServingAction, { id: p.id, value: (!p.veteran_serving).toString() })} />
+            <Toggle on={!!p.comped_premium} label="Free premium" onClick={() => callAction(compedPremiumAction, { id: p.id, value: (!p.comped_premium).toString() })} />
+            <input
+              defaultValue={p.comp_note || ''}
+              placeholder="Note (e.g. SC Veteran Coalition partner)"
+              onBlur={(e) => { if (e.target.value !== (p.comp_note || '')) callAction(compNoteAction, { id: p.id, note: e.target.value }) }}
+              style={{ flex: '1 1 220px', minWidth: 160, fontSize: 12, padding: '6px 9px', border: '1px solid #e5e3dc', borderRadius: 7, background: '#faf9f5', color: '#333' }}
+            />
+          </div>
         </div>
       )) : (
         <p style={{ fontSize: 14, color: '#888', padding: 20 }}>
@@ -152,5 +183,16 @@ export default function AdminProviderManager({
         </p>
       )}
     </div>
+  )
+}
+
+function Toggle({ on, label, onClick }: { on: boolean; label: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} role="switch" aria-checked={on} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+      <span style={{ width: 34, height: 20, borderRadius: 99, background: on ? teal : '#cdd3d2', position: 'relative', flex: 'none', transition: 'background .15s' }}>
+        <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: on ? 17 : 3, transition: 'left .15s' }} />
+      </span>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: dark }}>{label}</span>
+    </button>
   )
 }

@@ -3,6 +3,7 @@
 
 export type SubscriptionFields = {
   is_premium?: boolean | null
+  comped_premium?: boolean | null
   subscription_status?: string | null
   subscription_interval?: string | null
   subscription_price_cents?: number | null
@@ -13,6 +14,9 @@ export type SubscriptionFields = {
 // While Stripe is not yet wired, you can simply set is_premium = true in Supabase to test.
 export function isPremium(p: SubscriptionFields | null | undefined): boolean {
   if (!p) return false
+  // Admin-granted complimentary premium (e.g. veteran-serving orgs) — always on,
+  // independent of Stripe.
+  if (p.comped_premium) return true
   if (!p.is_premium) return false
   const status = p.subscription_status || 'none'
   // 'canceled' here means fully ended; a Stripe "cancel at period end" should keep

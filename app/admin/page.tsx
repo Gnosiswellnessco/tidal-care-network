@@ -77,6 +77,33 @@ async function bulkDeleteProviders(formData: FormData) {
   revalidatePath('/admin')
 }
 
+async function setVeteranServing(formData: FormData) {
+  'use server'
+  const id = formData.get('id') as string
+  const value = formData.get('value') === 'true'
+  const admin = createAdminClient()
+  await admin.from('providers').update({ veteran_serving: value }).eq('id', id)
+  revalidatePath('/admin')
+}
+
+async function setCompedPremium(formData: FormData) {
+  'use server'
+  const id = formData.get('id') as string
+  const value = formData.get('value') === 'true'
+  const admin = createAdminClient()
+  await admin.from('providers').update({ comped_premium: value }).eq('id', id)
+  revalidatePath('/admin')
+}
+
+async function setCompNote(formData: FormData) {
+  'use server'
+  const id = formData.get('id') as string
+  const note = ((formData.get('note') as string) || '').trim() || null
+  const admin = createAdminClient()
+  await admin.from('providers').update({ comp_note: note }).eq('id', id)
+  revalidatePath('/admin')
+}
+
 async function removePost(formData: FormData) {
   'use server'
   const supabase = await createClient()
@@ -607,10 +634,13 @@ export default async function AdminPage() {
 
         <h2 style={{ fontSize: 18, fontWeight: 600, color: '#2c4d52', marginBottom: 12 }}>All providers</h2>
         <AdminProviderManager
-          providers={(providers || []).map((p) => ({ id: p.id, full_name: p.full_name, credentials: p.credentials, practice_name: p.practice_name, email: p.email, vetting_status: p.vetting_status, admin_override: p.admin_override }))}
+          providers={(providers || []).map((p) => ({ id: p.id, full_name: p.full_name, credentials: p.credentials, practice_name: p.practice_name, email: p.email, vetting_status: p.vetting_status, admin_override: p.admin_override, veteran_serving: p.veteran_serving, comped_premium: p.comped_premium, comp_note: p.comp_note }))}
           removeAction={bulkRemoveProviders}
           deleteAction={bulkDeleteProviders}
           reinstateAction={bulkReinstateProviders}
+          veteranServingAction={setVeteranServing}
+          compedPremiumAction={setCompedPremium}
+          compNoteAction={setCompNote}
         />
       </div>
     </main>

@@ -141,4 +141,4 @@ export const INSURANCE_OPTIONS = ['BCBS', 'Aetna', 'Cigna', 'Medicaid (SC)', 'Me
 
 export const AGE_GROUPS = ['Infants / toddlers (0–3)', 'Children (4–12)', 'Adolescents (13–17)', 'Young adults (18–25)', 'Adults (26–64)', 'Older adults (65+)', 'Lifespan / all ages']
 
-export const IDENTITY_TAGS = ['LGBTQ+ affirming', 'Trans & nonbinary affirming', 'Black / African American community', 'Latino / Hispanic community', 'Asian / Pacific Islander community', 'Indigenous / Native American community', 'Faith-integrated care', 'Trauma-informed', 'Veteran-serving', 'Neurodivergent-affirming', 'Disability-affirming', 'Spanish-speaking', 'Weight-neutral / HAES']
+export const IDENTITY_TAGS = ['LGBTQ+ affirming', 'Trans & nonbinary affirming', 'Black / African American community', 'Latino / Hispanic community', 'Asian / Pacific Islander community', 'Indigenous / Native American community', 'Faith-integrated care', 'Trauma-informed', 'Neurodivergent-affirming', 'Disability-affirming', 'Spanish-speaking', 'Weight-neutral / HAES']

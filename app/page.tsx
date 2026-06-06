@@ -140,7 +140,7 @@ export default async function HomePage() {
           <div style={{ height: 2, width: 36, background: BRAND.champagne, margin: '0 auto 16px' }} />
           <h2 style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, marginBottom: 12, color: BRAND.dark }}>Care that sees the whole person</h2>
           <p style={{ fontSize: 15, lineHeight: 1.75, color: '#4a5557', maxWidth: 580, margin: '0 auto' }}>
-            Every provider commits to cultural competence, anti-discriminatory practice, affirming care for LGBTQ+ individuals, trauma-informed approaches, and ongoing professional growth — the foundation of how we believe care should be delivered.
+            Every provider agrees to uphold our shared standards — cultural competence, anti-discriminatory practice, affirming care for LGBTQ+ individuals, and ongoing professional growth. Specialized approaches like trauma-informed care vary by provider and are noted on each profile.
           </p>
         </div>
       </section>
