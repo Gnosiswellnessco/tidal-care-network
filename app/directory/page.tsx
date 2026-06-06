@@ -11,6 +11,8 @@ export default async function DirectoryPage() {
     .select('*')
     .eq('vetting_status', 'approved')
     .eq('is_active', true)
+    .neq('listing_status', 'hidden')
+    .eq('is_self_paused', false)
     .order('full_name')
 
   const ids = (rawProviders || []).map((p) => p.id)

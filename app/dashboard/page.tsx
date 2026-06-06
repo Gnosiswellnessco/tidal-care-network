@@ -11,6 +11,7 @@ import PremiumFeatures from '@/components/PremiumFeatures'
 import PremiumInsights from '@/components/PremiumInsights'
 import PostComposer from '@/components/PostComposer'
 import UpgradeButtons from '@/components/UpgradeButtons'
+import AccountStatusBanner from '@/components/AccountStatusBanner'
 import { getAdminInfo } from '@/lib/admin-auth'
 import { isPremium, priceLabel, PREMIUM_ACCENT, PREMIUM_ACCENT_DARK } from '@/lib/subscription'
 
@@ -26,13 +27,28 @@ export default async function DashboardPage() {
 
   const { data: provider } = await supabase
     .from('providers')
-    .select('id, full_name, vetting_status, is_org, is_premium, subscription_status, subscription_interval, subscription_price_cents, subscription_renews_at, booking_type, booking_value, intro_video_url, extended_bio, custom_links, show_supporter_badge')
+    .select('id, full_name, vetting_status, is_org, is_premium, subscription_status, subscription_interval, subscription_price_cents, subscription_renews_at, booking_type, booking_value, intro_video_url, extended_bio, custom_links, show_supporter_badge, listing_status, status_reason_code, status_note, status_changed_at, is_self_paused, last_certified_at')
     .eq('user_id', user.id)
     .maybeSingle()
 
   if (!provider) {
     redirect('/join')
   }
+
+  // Keep listing status in sync with credential expiry, then refresh those fields.
+  await supabase.rpc('tcn_sync_credential_listing', { p_provider_id: provider.id })
+  const { data: freshStatus } = await supabase
+    .from('providers')
+    .select('listing_status, status_reason_code, status_note, status_changed_at, is_self_paused, last_certified_at')
+    .eq('id', provider.id)
+    .maybeSingle()
+  if (freshStatus) Object.assign(provider, freshStatus)
+
+  const { data: credentials } = await supabase
+    .from('provider_credentials')
+    .select('id, kind, label, file_name, expiration_date')
+    .eq('provider_id', provider.id)
+    .order('expiration_date', { ascending: true, nullsFirst: false })
 
   const adminInfo = await getAdminInfo(user.email)
   const premium = isPremium(provider)
@@ -192,6 +208,16 @@ export default async function DashboardPage() {
 
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '24px 40px' }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: '#2c4d52', marginBottom: 16 }}>Your dashboard</h1>
+
+        <AccountStatusBanner
+          vettingStatus={provider.vetting_status}
+          listingStatus={provider.listing_status}
+          reasonCode={provider.status_reason_code}
+          statusNote={provider.status_note}
+          isSelfPaused={provider.is_self_paused}
+          lastCertifiedAt={provider.last_certified_at}
+          credentials={credentials || []}
+        />
 
         {provider ? (
           <div style={{ background: 'white', borderRadius: 12, border: '1px solid #e5e3dc', padding: 28 }}>

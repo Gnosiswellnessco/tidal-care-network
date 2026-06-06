@@ -24,7 +24,7 @@ const ATTESTATIONS = [
 type Org = { id: string; full_name: string; practice_name: string | null }
 type Address = { label: string; street: string; city: string; state: string; zip: string }
 type TagReq = { category: string; section: string; tag: string }
-type CredFile = { kind: 'license' | 'cert'; fileName: string; filePath: string }
+type CredFile = { kind: 'license' | 'cert'; fileName: string; filePath: string; issueDate: string; expirationDate: string }
 
 const emptyAddress = (): Address => ({ label: '', street: '', city: '', state: 'SC', zip: '' })
 
@@ -153,12 +153,15 @@ export default function JoinPage() {
     const path = `temp/${user.id}/${Date.now()}-${safeName}`
     const { error: uploadError } = await supabase.storage.from('provider-credentials').upload(path, file)
     if (uploadError) { setErrorMsg('Upload failed: ' + uploadError.message); setUploadingCred(false); return }
-    setCredFiles((cur) => [...cur, { kind, fileName: file.name, filePath: path }])
+    setCredFiles((cur) => [...cur, { kind, fileName: file.name, filePath: path, issueDate: '', expirationDate: '' }])
     setUploadingCred(false)
     e.target.value = ''
   }
   function removeCredFile(idx: number) {
     setCredFiles((cur) => cur.filter((_, i) => i !== idx))
+  }
+  function updateCredDate(idx: number, field: 'issueDate' | 'expirationDate', value: string) {
+    setCredFiles((cur) => cur.map((f, i) => (i === idx ? { ...f, [field]: value } : f)))
   }
 
   async function checkNpi() {
@@ -188,6 +191,7 @@ export default function JoinPage() {
       if (!credentialType) return 'Please select your credential type.'
       if (credentialType === 'State license' && !licenseNumber.trim()) return 'Please enter your license number.'
       if (credFiles.length === 0) return 'Please upload at least one license or certification document.'
+      if (credFiles.some((f) => f.kind === 'license' && !f.expirationDate)) return 'Please add the expiration date for each license. (Certifications without an expiration can be left blank.)'
       if (needsEndorsement && !endorserName.trim()) return "Please enter your endorsing colleague's name."
       if (needsEndorsement && !endorserEmail.trim()) return "Please enter your endorsing colleague's email."
     }
@@ -299,7 +303,14 @@ export default function JoinPage() {
 
     if (credFiles.length > 0) {
       await supabase.from('provider_credentials').insert(
-        credFiles.map((f) => ({ provider_id: provider.id, file_path: f.filePath, file_name: f.fileName, kind: f.kind }))
+        credFiles.map((f) => ({
+          provider_id: provider.id,
+          file_path: f.filePath,
+          file_name: f.fileName,
+          kind: f.kind,
+          issue_date: f.issueDate || null,
+          expiration_date: f.expirationDate || null,
+        }))
       )
     }
 
@@ -482,13 +493,31 @@ export default function JoinPage() {
                 </label>
               </div>
               {credFiles.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {credFiles.map((f, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '8px 12px', background: mint, borderRadius: 8 }}>
-                      <span style={{ fontSize: 13, color: dark }}>✓ {f.fileName} <span style={{ color: '#888', fontWeight: 500 }}>· {f.kind === 'license' ? 'License' : 'Certification'}</span></span>
-                      <button type="button" onClick={() => removeCredFile(i)} style={{ fontSize: 12, color: '#991b1b', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {credFiles.map((f, i) => {
+                    const needsExp = f.kind === 'license' && !f.expirationDate
+                    return (
+                      <div key={i} style={{ padding: '10px 12px', background: mint, borderRadius: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                          <span style={{ fontSize: 13, color: dark }}>✓ {f.fileName} <span style={{ color: '#888', fontWeight: 500 }}>· {f.kind === 'license' ? 'License' : 'Certification'}</span></span>
+                          <button type="button" onClick={() => removeCredFile(i)} style={{ fontSize: 12, color: '#991b1b', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                          <label style={{ fontSize: 12, color: '#555', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            Issued (optional)
+                            <input type="date" value={f.issueDate} onChange={(e) => updateCredDate(i, 'issueDate', e.target.value)} style={dateInp} />
+                          </label>
+                          <label style={{ fontSize: 12, color: '#555', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            Expires{f.kind === 'license' ? <span style={{ color: '#b3504f' }}> *</span> : ' (optional)'}
+                            <input type="date" value={f.expirationDate} onChange={(e) => updateCredDate(i, 'expirationDate', e.target.value)} style={{ ...dateInp, border: needsExp ? '1px solid #b3504f' : '1px solid #d4d2ca' }} />
+                          </label>
+                        </div>
+                        {f.kind === 'license' && (
+                          <p style={{ fontSize: 11, color: '#7d8a87', margin: '7px 0 0', lineHeight: 1.4 }}>A license that passes its expiration date will automatically hide your listing until you update it.</p>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -769,6 +798,7 @@ export default function JoinPage() {
 }
 
 const inp: React.CSSProperties = { width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, background: 'white', color: '#1a1a1a' }
+const dateInp: React.CSSProperties = { padding: '8px 10px', fontSize: 13, border: '1px solid #d4d2ca', borderRadius: 8, background: 'white', color: '#1a1a1a' }
 const selectStyle: React.CSSProperties = {
   width: '100%', padding: '10px 36px 10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: 'white',
   appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',

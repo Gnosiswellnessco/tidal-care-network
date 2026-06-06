@@ -52,6 +52,8 @@ export default async function ProviderProfile({ params }: { params: Promise<{ id
     .eq('id', id)
     .eq('vetting_status', 'approved')
     .eq('is_active', true)
+    .neq('listing_status', 'hidden')
+    .eq('is_self_paused', false)
     .maybeSingle()
 
   if (!p) notFound()

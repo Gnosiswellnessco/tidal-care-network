@@ -16,6 +16,7 @@ type Address = { label: string; street: string; city: string; state: string; zip
 const emptyAddress = (): Address => ({ label: '', street: '', city: '', state: 'SC', zip: '' })
 
 type TagRequest = { category: string; section: string; tag: string }
+type Cred = { id?: string; kind: 'license' | 'cert'; fileName: string; filePath: string; issueDate: string; expirationDate: string }
 
 export default function EditProfilePage() {
   const router = useRouter()
@@ -42,6 +43,10 @@ export default function EditProfilePage() {
   const [website, setWebsite] = useState('')
   const [photoUrl, setPhotoUrl] = useState('')
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+
+  const [creds, setCreds] = useState<Cred[]>([])
+  const [uploadingCred, setUploadingCred] = useState(false)
+  const [removedCredIds, setRemovedCredIds] = useState<string[]>([])
 
   const [selectedCats, setSelectedCats] = useState<string[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -108,6 +113,20 @@ export default function EditProfilePage() {
     const { data: popsData } = await supabase.from('provider_populations').select('population').eq('provider_id', p.id)
     setSelectedPopulations((popsData || []).map((pp) => pp.population))
 
+    const { data: credRows } = await supabase
+      .from('provider_credentials')
+      .select('id, kind, file_name, file_path, issue_date, expiration_date')
+      .eq('provider_id', p.id)
+      .order('kind', { ascending: true })
+    setCreds((credRows || []).map((c) => ({
+      id: c.id,
+      kind: (c.kind === 'license' ? 'license' : 'cert') as 'license' | 'cert',
+      fileName: c.file_name || '',
+      filePath: c.file_path,
+      issueDate: c.issue_date || '',
+      expirationDate: c.expiration_date || '',
+    })))
+
     const { data: addrs } = await supabase.from('provider_addresses').select('label, street, city, state, zip').eq('provider_id', p.id).order('is_primary', { ascending: false })
     if (addrs && addrs.length > 0) {
       setAddresses(addrs.map((a) => ({ label: a.label || '', street: a.street || '', city: a.city || '', state: a.state || 'SC', zip: a.zip || '' })))
@@ -126,6 +145,36 @@ export default function EditProfilePage() {
   }
   function addAddress() { setAddresses((cur) => [...cur, emptyAddress()]) }
   function removeAddress(i: number) { setAddresses((cur) => cur.filter((_, idx) => idx !== i)) }
+
+  function updateCredDate(idx: number, field: 'issueDate' | 'expirationDate', value: string) {
+    setCreds((cur) => cur.map((c, i) => (i === idx ? { ...c, [field]: value } : c)))
+  }
+  function removeCred(idx: number) {
+    setCreds((cur) => {
+      const c = cur[idx]
+      if (c.id) setRemovedCredIds((r) => [...r, c.id!])
+      return cur.filter((_, i) => i !== idx)
+    })
+  }
+  async function handleCredUpload(e: React.ChangeEvent<HTMLInputElement>, kind: 'license' | 'cert') {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 10 * 1024 * 1024) { setErrorMsg('File must be under 10MB.'); return }
+    const okType = file.type === 'application/pdf' || file.type.startsWith('image/')
+    if (!okType) { setErrorMsg('Please upload a PDF or image file.'); return }
+    setUploadingCred(true)
+    setErrorMsg('')
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setErrorMsg('Please sign in first.'); setUploadingCred(false); return }
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `temp/${user.id}/${Date.now()}-${safeName}`
+    const { error: uploadError } = await supabase.storage.from('provider-credentials').upload(path, file)
+    if (uploadError) { setErrorMsg('Upload failed: ' + uploadError.message); setUploadingCred(false); return }
+    setCreds((cur) => [...cur, { kind, fileName: file.name, filePath: path, issueDate: '', expirationDate: '' }])
+    setUploadingCred(false)
+    e.target.value = ''
+  }
 
   function addTagRequest(category: string, section: string) {
     const tag = reqText.trim()
@@ -163,6 +212,7 @@ export default function EditProfilePage() {
       if (!fullName.trim()) return isOrgMode ? 'Please enter the admin contact name.' : 'Please enter your full name.'
       if (!isOrgMode && !credentials.trim()) return 'Please enter your credentials or title.'
       if (isOrgMode && !practiceName.trim()) return 'Please enter your organization name.'
+      if (creds.some((c) => c.kind === 'license' && !c.expirationDate)) return 'Please add the expiration date for each license. (Certifications without an expiration can be left blank.)'
     }
     if (s === 1 && selectedCats.length === 0) return 'Please select at least one category.'
     if (s === 2 && selectedTags.length === 0) return 'Please select at least one specialty.'
@@ -253,6 +303,31 @@ export default function EditProfilePage() {
         selectedPopulations.map((pop) => ({ provider_id: providerId, population: pop }))
       )
     }
+
+    // Credentials: delete removed, update dates on existing, insert any new uploads.
+    if (removedCredIds.length > 0) {
+      await supabase.from('provider_credentials').delete().in('id', removedCredIds)
+    }
+    for (const c of creds) {
+      if (c.id) {
+        await supabase.from('provider_credentials').update({
+          issue_date: c.issueDate || null,
+          expiration_date: c.expirationDate || null,
+        }).eq('id', c.id)
+      } else {
+        await supabase.from('provider_credentials').insert({
+          provider_id: providerId,
+          file_path: c.filePath,
+          file_name: c.fileName,
+          kind: c.kind,
+          issue_date: c.issueDate || null,
+          expiration_date: c.expirationDate || null,
+        })
+      }
+    }
+    // Re-evaluate listing status now that credential dates may have changed —
+    // a fixed expiration date un-hides the provider immediately.
+    await supabase.rpc('tcn_sync_credential_listing', { p_provider_id: providerId })
 
     await supabase.from('provider_addresses').delete().eq('provider_id', providerId)
     const validAddresses = addresses.filter((a) => a.street.trim() || a.city.trim() || a.zip.trim())
@@ -356,6 +431,50 @@ export default function EditProfilePage() {
             </Field>
             {!isOrgMode && <Field label="NPI number (if applicable)"><input style={inp} value={npiNumber} onChange={(e) => setNpiNumber(e.target.value)} placeholder="10-digit NPI" /></Field>}
             <Field label={isOrgMode ? 'Accreditation / certifying body (if applicable)' : 'Issuing body (if no SC license)'}><input style={inp} value={issuingBody} onChange={(e) => setIssuingBody(e.target.value)} /></Field>
+
+            <div style={{ marginTop: 8, paddingTop: 16, borderTop: '1px solid #eee' }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: dark, marginBottom: 4 }}>Licenses &amp; certifications</div>
+              <p style={{ fontSize: 12, color: '#888', marginBottom: 10, lineHeight: 1.5 }}>Keep your expiration dates current. A license that passes its expiration date automatically hides your listing until you update it — updating the date here restores it right away. Renewed a credential? Upload the new document below.</p>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                <label style={{ display: 'inline-block', fontSize: 13, fontWeight: 500, padding: '8px 16px', borderRadius: 8, border: '1px solid ' + teal, background: 'white', color: teal, cursor: uploadingCred ? 'default' : 'pointer' }}>
+                  {uploadingCred ? 'Uploading…' : '+ Upload license'}
+                  <input type="file" accept="application/pdf,image/*" onChange={(e) => handleCredUpload(e, 'license')} disabled={uploadingCred} style={{ display: 'none' }} />
+                </label>
+                <label style={{ display: 'inline-block', fontSize: 13, fontWeight: 500, padding: '8px 16px', borderRadius: 8, border: '1px solid ' + teal, background: 'white', color: teal, cursor: uploadingCred ? 'default' : 'pointer' }}>
+                  {uploadingCred ? 'Uploading…' : '+ Upload certification'}
+                  <input type="file" accept="application/pdf,image/*" onChange={(e) => handleCredUpload(e, 'cert')} disabled={uploadingCred} style={{ display: 'none' }} />
+                </label>
+              </div>
+
+              {creds.length === 0 ? (
+                <p style={{ fontSize: 12, color: '#9aa0a1' }}>No credential documents on file yet.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {creds.map((c, i) => {
+                    const needsExp = c.kind === 'license' && !c.expirationDate
+                    return (
+                      <div key={c.id || 'new' + i} style={{ padding: '10px 12px', background: mint, borderRadius: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                          <span style={{ fontSize: 13, color: dark }}>✓ {c.fileName || 'Credential'} <span style={{ color: '#888', fontWeight: 500 }}>· {c.kind === 'license' ? 'License' : 'Certification'}</span></span>
+                          <button type="button" onClick={() => removeCred(i)} style={{ fontSize: 12, color: '#991b1b', background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+                        </div>
+                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                          <label style={{ fontSize: 12, color: '#555', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            Issued (optional)
+                            <input type="date" value={c.issueDate} onChange={(e) => updateCredDate(i, 'issueDate', e.target.value)} style={dateInp} />
+                          </label>
+                          <label style={{ fontSize: 12, color: '#555', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            Expires{c.kind === 'license' ? <span style={{ color: '#b3504f' }}> *</span> : ' (optional)'}
+                            <input type="date" value={c.expirationDate} onChange={(e) => updateCredDate(i, 'expirationDate', e.target.value)} style={{ ...dateInp, border: needsExp ? '1px solid #b3504f' : '1px solid #d4d2ca' }} />
+                          </label>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
           </Card>
         )}
 
@@ -543,6 +662,7 @@ export default function EditProfilePage() {
 }
 
 const inp: React.CSSProperties = { width: '100%', padding: '10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, background: 'white', color: '#1a1a1a' }
+const dateInp: React.CSSProperties = { padding: '8px 10px', fontSize: 13, border: '1px solid #d4d2ca', borderRadius: 8, background: 'white', color: '#1a1a1a' }
 const selectStyle: React.CSSProperties = {
   width: '100%', padding: '10px 36px 10px 12px', fontSize: 14, border: '1px solid #d4d2ca', borderRadius: 8, color: '#1a1a1a', background: 'white',
   appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',

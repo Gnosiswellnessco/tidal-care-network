@@ -1,128 +1,171 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import BrandLogo from '@/components/BrandLogo'
-import PostShareRow from '@/components/PostShareRow'
 import { categoryLabel, postTypeLabel } from '@/lib/news-taxonomy'
+import { BRAND, SERIF } from '@/lib/brand'
+import NewsShareRow from '@/components/NewsShareRow'
+import InstagramShareButtons from '@/components/InstagramShareButtons'
 
 export const dynamic = 'force-dynamic'
 
-const dark = '#2c4d52'
-const teal = '#3e6a70'
-const mint = '#e8eff0'
-const CHAMP_TINT = '#efe9dc'
-const CHAMP_DARK = '#7d7256'
-
 const DOT: Record<string, string> = { news: '#3e6a70', event: '#b5aa8e', announcement: '#e8b54a', resource: '#5ba1a9' }
 
-export default async function PostDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+function fmtFull(d: string) {
+  return new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })
+}
+function fmtEvent(d: string) {
+  return new Date(d + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+}
+function authorName(a: { full_name: string; credentials: string | null; practice_name: string | null; is_org: boolean } | null) {
+  if (!a) return ''
+  return a.is_org ? (a.practice_name || a.full_name) : `${a.full_name}${a.credentials ? `, ${a.credentials}` : ''}`
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const supabase = await createClient()
+  const { data: post } = await supabase
+    .from('provider_posts')
+    .select('title, body')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .maybeSingle()
+  if (!post) return { title: 'Tidal Care Network' }
+  const description = (post.body || '').replace(/\s+/g, ' ').trim().slice(0, 155) || undefined
+  // og:image is supplied automatically by opengraph-image.tsx in this folder.
+  return {
+    title: `${post.title} — Tidal Care Network`,
+    description,
+    openGraph: { title: post.title, description, type: 'article' },
+  }
+}
+
+export default async function NewsDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const supabase = await createClient()
 
-  const { data: post } = await supabase
+  const { data: p } = await supabase
     .from('provider_posts')
     .select('*')
     .eq('slug', slug)
     .eq('status', 'published')
     .maybeSingle()
 
-  if (!post) notFound()
+  if (!p) notFound()
 
   const { data: author } = await supabase
     .from('providers')
-    .select('id, full_name, credentials, practice_name, is_org')
-    .eq('id', post.provider_id)
+    .select('id, full_name, credentials, practice_name, is_org, vetting_status, is_active')
+    .eq('id', p.provider_id)
     .maybeSingle()
 
-  const { data: cats } = await supabase
+  const { data: catRows } = await supabase
     .from('provider_categories')
-    .select('category, is_primary')
-    .eq('provider_id', post.provider_id)
+    .select('category')
+    .eq('provider_id', p.provider_id)
 
-  const categoryKey = (cats || []).find((c) => c.is_primary)?.category || (cats || [])[0]?.category || null
-  const authorDisplay = author
-    ? (author.is_org ? (author.practice_name || author.full_name) : `${author.full_name}${author.credentials ? `, ${author.credentials}` : ''}`)
-    : 'Tidal Care Network'
-  const initial = (authorDisplay || '?').charAt(0).toUpperCase()
-  const postedDate = new Date(post.published_at).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
-
-  const tags: string[] = [...(post.populations || []), ...(post.topics || [])]
+  const dot = DOT[p.post_type] || BRAND.teal
+  const populations: string[] = Array.isArray(p.populations) ? p.populations : []
+  const topics: string[] = Array.isArray(p.topics) ? p.topics : []
+  const categories: string[] = (catRows || []).map((c) => c.category)
+  const linkLabel = p.link_label || (p.post_type === 'event' ? 'Register / RSVP' : p.post_type === 'resource' ? 'Visit website' : 'Learn more')
+  const authorIsLive = author && author.vetting_status === 'approved' && author.is_active
 
   return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#f7f6f2' }}>
+    <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1a1a1a', background: BRAND.pageBg, minHeight: '100vh' }}>
       <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 40px', maxWidth: 1000, margin: '0 auto' }}>
         <Link href="/"><BrandLogo height={180} /></Link>
-        <Link href="/directory" style={{ fontSize: 14, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>Find a provider</Link>
+        <Link href="/news" style={{ fontSize: 14, color: BRAND.teal, textDecoration: 'none' }}>← All updates</Link>
       </header>
 
-      <div style={{ maxWidth: 640, margin: '0 auto', padding: '8px 40px 64px' }}>
-        <Link href="/news" style={{ fontSize: 13, color: teal, textDecoration: 'none' }}>← News &amp; updates</Link>
-
-        <div style={{ background: 'white', border: '0.5px solid #e5e3dc', borderRadius: 14, padding: '18px 20px', marginTop: 14 }}>
-          {post.image_url && (
-            <div style={{ background: '#f0efe9', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14, marginBottom: 16 }}>
-              <img src={post.image_url} alt="" style={{ maxWidth: '100%', maxHeight: 440, objectFit: 'contain', borderRadius: 8, display: 'block' }} />
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '12px 40px 64px' }}>
+        <article style={{ background: 'white', borderRadius: 18, border: '0.5px solid ' + BRAND.hairline, boxShadow: '0 1px 3px rgba(44,77,82,0.05)', overflow: 'hidden' }}>
+          {p.image_url && (
+            <div style={{ width: '100%', aspectRatio: '16/9', background: '#e5e3dc', overflow: 'hidden' }}>
+              <img src={p.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
             </div>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: DOT[post.post_type] || teal }} />
-            <span style={{ fontSize: 11, fontWeight: 500, color: dark, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{postTypeLabel(post.post_type)}</span>
-            <span style={{ fontSize: 12, color: '#9aa0a1' }}>{categoryKey ? `${categoryLabel(categoryKey)} · ` : ''}posted {postedDate}</span>
-          </div>
-
-          <h1 style={{ fontSize: 23, fontWeight: 700, color: dark, lineHeight: 1.25, margin: '0 0 12px' }}>{post.title}</h1>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', background: mint, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600, color: teal }}>{initial}</div>
-            {author
-              ? <Link href={`/provider/${author.id}`} style={{ fontSize: 14, color: teal, textDecoration: 'none' }}>{authorDisplay}</Link>
-              : <span style={{ fontSize: 14, color: teal }}>{authorDisplay}</span>}
-          </div>
-
-          {/* EVENT block */}
-          {post.post_type === 'event' && (
-            <div style={{ background: mint, borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              {post.event_date && <div style={{ fontSize: 13, color: dark, marginBottom: post.location || post.cost ? 8 : 0 }}>📅 {new Date(post.event_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}{post.event_time ? ` · ${post.event_time}` : ''}</div>}
-              {post.location && <div style={{ fontSize: 13, color: dark, marginBottom: post.cost ? 8 : 0 }}>📍 {post.location}</div>}
-              {post.cost && <div style={{ fontSize: 13, color: dark, marginBottom: post.link_url ? 12 : 0 }}>🎟 {post.cost}</div>}
-              {post.link_url && <a href={post.link_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', fontSize: 13, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none', marginTop: 4 }}>{post.link_label || 'Register / RSVP'}</a>}
+          <div style={{ padding: '32px 40px 40px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: dot }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: BRAND.dark, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{postTypeLabel(p.post_type)}</span>
             </div>
-          )}
 
-          {/* RESOURCE block */}
-          {post.post_type === 'resource' && (
-            <div style={{ background: CHAMP_TINT, borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-              {post.audience_note && (<>
-                <div style={{ fontSize: 12, fontWeight: 600, color: CHAMP_DARK, marginBottom: 4 }}>Who it&apos;s for</div>
-                <div style={{ fontSize: 13, color: CHAMP_DARK, marginBottom: 12 }}>{post.audience_note}</div>
-              </>)}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {post.resource_file_url && <a href={post.resource_file_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 500, color: 'white', background: CHAMP_DARK, padding: '9px 16px', borderRadius: 8, textDecoration: 'none' }}>⬇ Download</a>}
-                {post.link_url && <a href={post.link_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 500, color: CHAMP_DARK, background: 'transparent', border: '1px solid ' + CHAMP_DARK, padding: '9px 16px', borderRadius: 8, textDecoration: 'none' }}>{post.link_label || 'Visit website'} ↗</a>}
+            <h1 style={{ fontFamily: SERIF, fontSize: 34, fontWeight: 600, color: BRAND.dark, lineHeight: 1.15, letterSpacing: '-0.01em', margin: '0 0 12px' }}>{p.title}</h1>
+
+            <div style={{ fontSize: 14, color: '#6b7577', marginBottom: 4 }}>
+              {author && (
+                authorIsLive ? (
+                  <Link href={`/provider/${author.id}`} style={{ color: BRAND.teal, textDecoration: 'none', fontWeight: 500 }}>{authorName(author)}</Link>
+                ) : (
+                  <span style={{ color: BRAND.teal, fontWeight: 500 }}>{authorName(author)}</span>
+                )
+              )}
+            </div>
+            <div style={{ fontSize: 13, color: '#9aa0a1', marginBottom: 24 }}>{fmtFull(p.published_at)}</div>
+
+            {p.post_type === 'event' && (
+              <div style={{ background: BRAND.mint, borderRadius: 12, padding: '16px 18px', marginBottom: 24 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14, color: BRAND.dark }}>
+                  {p.event_date && <div><strong>When:</strong> {fmtEvent(p.event_date)}{p.event_time ? ` · ${p.event_time}` : ''}</div>}
+                  {p.location && <div><strong>Where:</strong> {p.location}</div>}
+                  {p.cost && <div><strong>Cost:</strong> {p.cost}</div>}
+                </div>
               </div>
+            )}
+
+            {p.post_type === 'resource' && p.audience_note && (
+              <div style={{ fontSize: 13, color: '#54625f', marginBottom: 20 }}><strong>Who it&apos;s for:</strong> {p.audience_note}</div>
+            )}
+
+            {p.body && (
+              <div style={{ fontSize: 16, lineHeight: 1.75, color: '#3a4446', whiteSpace: 'pre-wrap', marginBottom: 24 }}>{p.body}</div>
+            )}
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
+              {p.link_url && (
+                <a href={p.link_url.startsWith('http') ? p.link_url : `https://${p.link_url}`} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-block', fontSize: 15, fontWeight: 500, color: 'white', background: BRAND.teal, padding: '11px 24px', borderRadius: 8, textDecoration: 'none' }}>
+                  {linkLabel}
+                </a>
+              )}
+              {p.resource_file_url && (
+                <a href={p.resource_file_url} target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'inline-block', fontSize: 15, fontWeight: 500, color: BRAND.teal, background: 'white', border: '1px solid ' + BRAND.teal, padding: '11px 24px', borderRadius: 8, textDecoration: 'none' }}>
+                  Download file
+                </a>
+              )}
             </div>
-          )}
 
-          {/* Body */}
-          {post.body && <div style={{ fontSize: 15, color: '#444', lineHeight: 1.7, marginBottom: 16, whiteSpace: 'pre-wrap' }}>{post.body}</div>}
+            {(categories.length > 0 || topics.length > 0 || populations.length > 0) && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 20 }}>
+                {categories.map((c) => (
+                  <span key={'c' + c} style={{ fontSize: 12, padding: '4px 11px', borderRadius: 999, background: BRAND.mint, color: BRAND.dark, fontWeight: 500 }}>{categoryLabel(c)}</span>
+                ))}
+                {topics.map((t) => (
+                  <span key={'t' + t} style={{ fontSize: 12, padding: '4px 11px', borderRadius: 999, background: '#f1efe8', color: '#6b7577' }}>{t}</span>
+                ))}
+                {populations.map((pop) => (
+                  <span key={'p' + pop} style={{ fontSize: 12, padding: '4px 11px', borderRadius: 999, background: '#f1efe8', color: '#6b7577' }}>{pop}</span>
+                ))}
+              </div>
+            )}
 
-          {/* ANNOUNCEMENT / NEWS link */}
-          {(post.post_type === 'announcement' || post.post_type === 'news') && post.link_url && (
-            <div style={{ marginBottom: 16 }}>
-              {post.post_type === 'announcement'
-                ? <a href={post.link_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', fontSize: 13, fontWeight: 500, color: 'white', background: teal, padding: '9px 18px', borderRadius: 8, textDecoration: 'none' }}>{post.link_label || 'Learn more'}</a>
-                : <a href={post.link_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: teal, textDecoration: 'none' }}>↗ {post.link_label || 'Read more'}</a>}
+            {/* Share */}
+            <div style={{ marginTop: 28, paddingTop: 24, borderTop: '0.5px solid ' + BRAND.hairline }}>
+              <NewsShareRow title={p.title} slug={p.slug} />
             </div>
-          )}
-
-          <PostShareRow title={post.title} slug={post.slug} />
-
-          {tags.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {tags.map((t) => <span key={t} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 999, background: '#f1efe8', color: '#666' }}>{t}</span>)}
+            <div style={{ marginTop: 22 }}>
+              <InstagramShareButtons title={p.title} slug={p.slug} />
             </div>
-          )}
+          </div>
+        </article>
+
+        <div style={{ marginTop: 24, textAlign: 'center' }}>
+          <Link href="/news" style={{ fontSize: 14, color: BRAND.teal, textDecoration: 'none' }}>← Back to all updates</Link>
         </div>
       </div>
     </main>
