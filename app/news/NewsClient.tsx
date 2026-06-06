@@ -19,6 +19,7 @@ type Post = {
   resource_file_url: string | null; audience_note: string | null
   published_at: string; expires_at: string | null
   author: Author; categories: string[]
+  is_demo?: boolean | null
 }
 
 function fmt(d: string) {
@@ -198,6 +199,7 @@ export default function NewsClient({ posts }: { posts: Post[] }) {
 }
 
 const chipWrap: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 6 }
+const demoImgTag: React.CSSProperties = { position: 'absolute', top: 8, left: 8, fontSize: 10, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 9px', borderRadius: 99, background: 'rgba(251,231,194,0.95)', color: '#92610a', zIndex: 2 }
 function Opt({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
   return <button onClick={onClick} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 999, cursor: 'pointer', border: on ? '1px solid #3e6a70' : '1px solid #d4d2ca', background: on ? '#e8eff0' : 'white', color: on ? '#2c4d52' : '#666', fontWeight: on ? 500 : 400 }}>{label}</button>
 }
@@ -228,7 +230,7 @@ function Img({ url }: { url: string | null }) {
 function FeaturedCard({ p, onShare }: { p: Post; onShare: (p: Post, e: React.MouseEvent) => void }) {
   return (
     <Link href={`/news/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit', background: 'white', border: '0.5px solid #e5e3dc', borderRadius: 12, overflow: 'hidden', display: 'block' }}>
-      <div style={{ position: 'relative' }}><Img url={p.image_url} /><ShareBtn p={p} onShare={onShare} /></div>
+      <div style={{ position: 'relative' }}><Img url={p.image_url} />{p.is_demo && <span style={demoImgTag}>Demo</span>}<ShareBtn p={p} onShare={onShare} /></div>
       <div style={{ padding: '16px 18px' }}>
         <div style={{ marginBottom: 9 }}><TypeTag type={p.post_type} /></div>
         <div style={{ fontSize: 18, fontWeight: 600, color: dark, lineHeight: 1.3, marginBottom: 7 }}>{p.title}</div>
@@ -242,7 +244,7 @@ function FeaturedCard({ p, onShare }: { p: Post; onShare: (p: Post, e: React.Mou
 function SmallCard({ p, onShare }: { p: Post; onShare: (p: Post, e: React.MouseEvent) => void }) {
   return (
     <Link href={`/news/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit', background: 'white', border: '0.5px solid #e5e3dc', borderRadius: 12, overflow: 'hidden', display: 'block' }}>
-      <div style={{ position: 'relative' }}><Img url={p.image_url} /><ShareBtn p={p} onShare={onShare} /></div>
+      <div style={{ position: 'relative' }}><Img url={p.image_url} />{p.is_demo && <span style={demoImgTag}>Demo</span>}<ShareBtn p={p} onShare={onShare} /></div>
       <div style={{ padding: '13px 15px' }}>
         <div style={{ marginBottom: 7 }}><TypeTag type={p.post_type} /></div>
         <div style={{ fontSize: 14, fontWeight: 600, color: dark, lineHeight: 1.35, marginBottom: 6 }}>{p.title}</div>

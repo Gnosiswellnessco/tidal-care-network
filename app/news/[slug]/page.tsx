@@ -6,7 +6,6 @@ import BrandLogo from '@/components/BrandLogo'
 import { categoryLabel, postTypeLabel } from '@/lib/news-taxonomy'
 import { BRAND, SERIF } from '@/lib/brand'
 import NewsShareRow from '@/components/NewsShareRow'
-import InstagramShareButtons from '@/components/InstagramShareButtons'
 
 export const dynamic = 'force-dynamic'
 
@@ -92,6 +91,7 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: dot }} />
               <span style={{ fontSize: 11, fontWeight: 600, color: BRAND.dark, textTransform: 'uppercase', letterSpacing: '0.12em' }}>{postTypeLabel(p.post_type)}</span>
+              {p.is_demo && <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', padding: '3px 9px', borderRadius: 99, background: '#fbe7c2', color: '#92610a' }}>Demo</span>}
             </div>
 
             <h1 style={{ fontFamily: SERIF, fontSize: 34, fontWeight: 600, color: BRAND.dark, lineHeight: 1.15, letterSpacing: '-0.01em', margin: '0 0 12px' }}>{p.title}</h1>
@@ -157,9 +157,6 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
             {/* Share */}
             <div style={{ marginTop: 28, paddingTop: 24, borderTop: '0.5px solid ' + BRAND.hairline }}>
               <NewsShareRow title={p.title} slug={p.slug} />
-            </div>
-            <div style={{ marginTop: 22 }}>
-              <InstagramShareButtons title={p.title} slug={p.slug} />
             </div>
           </div>
         </article>
